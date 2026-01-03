@@ -1,4 +1,3 @@
-import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -24,7 +23,6 @@ import WebsiteAnalysisPage from "@/pages/WebsiteAnalysisPage";
 import MetricsPage from "@/pages/MetricsPage";
 import ReportsPage from "@/pages/ReportsPage";
 import SettingsPage from "@/pages/SettingsPage";
-import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -70,7 +68,7 @@ function AppRoutes() {
       </Route>
 
       {/* Catch-all */}
-      <Route path="*" element={<NotFound />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }
@@ -79,7 +77,6 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
-        <Toaster />
         <Sonner />
         <BrowserRouter>
           <AppRoutes />
