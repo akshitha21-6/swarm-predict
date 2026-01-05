@@ -11,7 +11,12 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { Check, ChevronDown, ChevronUp, LucideIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Toaster as Sonner, toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 // Button
 const buttonVariants = cva(
