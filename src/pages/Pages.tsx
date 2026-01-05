@@ -1,14 +1,76 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { UserRole } from '@/types';
-import { Button, Input, Textarea, Label, Checkbox, Switch, Progress, Tabs, TabsContent, TabsList, TabsTrigger, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatCard, toast } from '@/components/UI';
-import {
-  LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
-} from 'recharts';
-import {
-  Brain, Mail, Lock, User, Loader2, AlertCircle, Upload, FileSpreadsheet, Check, X, AlertTriangle, Database, TrendingUp, Shield, Activity, Cpu, Target, Zap, Layers, Filter, Sparkles, ArrowRight, Info, Play, Pause, RotateCcw, Dna, Bug, Globe, Search, FileCode, Link2, Gauge, TrendingDown, FileText, Download, Calendar, BarChart3, Server, Bell, Save
-} from 'lucide-react';
+import { useAuth } from '@/App';
+import { Button, Input, Textarea, Label, Checkbox, Switch, Progress, Tabs, TabsContent, TabsList, TabsTrigger, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatCard, toast, cn } from '@/components/UI';
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import { Brain, Mail, Lock, User, Loader2, AlertCircle, Upload, FileSpreadsheet, Check, X, AlertTriangle, Database, TrendingUp, Shield, Activity, Cpu, Target, Zap, Layers, Filter, Sparkles, ArrowRight, Info, Play, Pause, RotateCcw, Dna, Bug, Globe, Search, FileCode, Link2, Gauge, TrendingDown, FileText, Download, Calendar, BarChart3, Server, Bell, Save, LayoutDashboard, Settings, LogOut, GitBranch, RefreshCw, Workflow } from 'lucide-react';
+
+// ==================== TYPES ====================
+export type UserRole = 'admin' | 'user';
+export interface User { id: string; email: string; name: string; role: UserRole; avatar?: string; }
+export interface Dataset { id: string; name: string; uploadedAt: Date; rows: number; columns: number; size: string; status: 'uploaded' | 'preprocessing' | 'ready' | 'error'; }
+export interface Feature { name: string; importance: number; selected: boolean; type: 'numeric' | 'categorical'; }
+export interface ModelMetrics { accuracy: number; precision: number; recall: number; f1Score: number; rocAuc: number; }
+export interface Model { id: string; name: string; type: 'logistic' | 'svm' | 'decision_tree' | 'random_forest' | 'naive_bayes' | 'voting' | 'stacking'; metrics: ModelMetrics; trainedAt: Date; optimized: boolean; }
+export interface Prediction { id: string; inputType: 'single' | 'batch' | 'url'; result: 'defective' | 'non-defective'; probability: number; riskLevel: 'low' | 'medium' | 'high'; timestamp: Date; featureContributions: { feature: string; contribution: number }[]; }
+export interface OptimizationResult { algorithm: 'PSO' | 'GA' | 'ACO' | 'Hybrid'; iteration: number; fitness: number; bestParams: Record<string, number>; convergenceHistory: number[]; }
+
+// ==================== LAYOUT ====================
+interface NavItem { icon: React.ElementType; label: string; href: string; adminOnly?: boolean; }
+const navItems: NavItem[] = [
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
+  { icon: Upload, label: 'Dataset Upload', href: '/dataset' },
+  { icon: Layers, label: 'Feature Selection', href: '/features' },
+  { icon: Sparkles, label: 'Optimization', href: '/optimization' },
+  { icon: Cpu, label: 'Model Training', href: '/training' },
+  { icon: Brain, label: 'Predictions', href: '/predictions' },
+  { icon: Globe, label: 'Website Analysis', href: '/website-analysis' },
+  { icon: BarChart3, label: 'Metrics', href: '/metrics' },
+  { icon: FileText, label: 'Reports', href: '/reports' },
+  { icon: GitBranch, label: 'Cross-Project', href: '/cross-project', adminOnly: true },
+  { icon: RefreshCw, label: 'Incremental Learning', href: '/incremental', adminOnly: true },
+  { icon: Workflow, label: 'DevOps', href: '/devops', adminOnly: true },
+  { icon: Activity, label: 'Admin Analytics', href: '/analytics', adminOnly: true },
+  { icon: Settings, label: 'Settings', href: '/settings' },
+];
+
+function Sidebar() {
+  const location = useLocation();
+  const { user, logout } = useAuth();
+  const filteredNavItems = navItems.filter((item) => !item.adminOnly || user?.role === 'admin');
+  return (
+    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar border-r border-sidebar-border">
+      <div className="flex h-full flex-col">
+        <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10"><Brain className="h-5 w-5 text-primary" /></div>
+          <div><h1 className="font-display text-lg font-bold gradient-text">DefectAI</h1><p className="text-xs text-muted-foreground">Swarm Intelligence</p></div>
+        </div>
+        <nav className="flex-1 overflow-y-auto px-3 py-4 scrollbar-hide">
+          <ul className="space-y-1">{filteredNavItems.map((item) => {
+            const isActive = location.pathname === item.href;
+            return (<li key={item.href}><Link to={item.href} className={cn('sidebar-item', isActive && 'active')}><item.icon className="h-5 w-5" /><span className="text-sm font-medium">{item.label}</span></Link></li>);
+          })}</ul>
+        </nav>
+        <div className="border-t border-sidebar-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20"><span className="text-sm font-semibold text-primary">{user?.name?.charAt(0).toUpperCase()}</span></div>
+            <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{user?.name}</p><p className="text-xs text-muted-foreground capitalize">{user?.role}</p></div>
+            <button onClick={logout} className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"><LogOut className="h-4 w-4" /></button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+export function MainLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-background">
+      <Sidebar />
+      <main className="ml-64 min-h-screen"><div className="p-8">{children}</div></main>
+    </div>
+  );
+}
 
 // ==================== AUTH PAGES ====================
 export function LoginPage() {
@@ -219,11 +281,11 @@ export function DatasetPage() {
 }
 
 // ==================== FEATURE SELECTION PAGE ====================
-interface Feature { name: string; importance: number; selected: boolean; type: 'numeric' | 'categorical'; method: 'RFE' | 'Correlation' | 'MI' | 'Swarm'; }
-const initialFeatures: Feature[] = [{ name: 'Lines of Code (LOC)', importance: 0.92, selected: true, type: 'numeric', method: 'Swarm' }, { name: 'Cyclomatic Complexity', importance: 0.88, selected: true, type: 'numeric', method: 'Swarm' }, { name: 'Code Churn', importance: 0.85, selected: true, type: 'numeric', method: 'RFE' }, { name: 'Number of Functions', importance: 0.78, selected: true, type: 'numeric', method: 'MI' }, { name: 'Comment Density', importance: 0.71, selected: true, type: 'numeric', method: 'Correlation' }, { name: 'Developer Experience', importance: 0.65, selected: true, type: 'numeric', method: 'RFE' }, { name: 'Commit Frequency', importance: 0.58, selected: true, type: 'numeric', method: 'MI' }, { name: 'Bug Fix Count', importance: 0.52, selected: true, type: 'numeric', method: 'Swarm' }, { name: 'Module Age', importance: 0.45, selected: false, type: 'numeric', method: 'Correlation' }, { name: 'Import Count', importance: 0.38, selected: false, type: 'numeric', method: 'RFE' }, { name: 'Test Coverage', importance: 0.32, selected: false, type: 'numeric', method: 'MI' }, { name: 'File Size', importance: 0.25, selected: false, type: 'numeric', method: 'Correlation' }];
+interface FeatureItem { name: string; importance: number; selected: boolean; type: 'numeric' | 'categorical'; method: 'RFE' | 'Correlation' | 'MI' | 'Swarm'; }
+const initialFeatures: FeatureItem[] = [{ name: 'Lines of Code (LOC)', importance: 0.92, selected: true, type: 'numeric', method: 'Swarm' }, { name: 'Cyclomatic Complexity', importance: 0.88, selected: true, type: 'numeric', method: 'Swarm' }, { name: 'Code Churn', importance: 0.85, selected: true, type: 'numeric', method: 'RFE' }, { name: 'Number of Functions', importance: 0.78, selected: true, type: 'numeric', method: 'MI' }, { name: 'Comment Density', importance: 0.71, selected: true, type: 'numeric', method: 'Correlation' }, { name: 'Developer Experience', importance: 0.65, selected: true, type: 'numeric', method: 'RFE' }, { name: 'Commit Frequency', importance: 0.58, selected: true, type: 'numeric', method: 'MI' }, { name: 'Bug Fix Count', importance: 0.52, selected: true, type: 'numeric', method: 'Swarm' }, { name: 'Module Age', importance: 0.45, selected: false, type: 'numeric', method: 'Correlation' }, { name: 'Import Count', importance: 0.38, selected: false, type: 'numeric', method: 'RFE' }, { name: 'Test Coverage', importance: 0.32, selected: false, type: 'numeric', method: 'MI' }, { name: 'File Size', importance: 0.25, selected: false, type: 'numeric', method: 'Correlation' }];
 
 export function FeatureSelectionPage() {
-  const [features, setFeatures] = useState<Feature[]>(initialFeatures);
+  const [features, setFeatures] = useState<FeatureItem[]>(initialFeatures);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizationProgress, setOptimizationProgress] = useState(0);
   const selectedCount = features.filter((f) => f.selected).length;
