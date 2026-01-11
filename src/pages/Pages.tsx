@@ -443,32 +443,459 @@ export function PredictionsPage() {
 }
 
 // ==================== WEBSITE ANALYSIS PAGE ====================
-interface WebsiteAnalysis { url: string; htmlSize: number; scriptCount: number; brokenLinks: number; jsComplexity: number; securityHeaders: { name: string; present: boolean }[]; defectProbability: number; riskLevel: 'low' | 'medium' | 'high'; issues: string[]; }
+interface DefectItem {
+  id: string;
+  category: 'security' | 'accessibility' | 'performance' | 'seo' | 'ux' | 'code-quality' | 'functionality' | 'future-risk';
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  title: string;
+  location: string;
+  description: string;
+  impact: string;
+  fix: string;
+  isFuturePrediction: boolean;
+}
+
+interface PreventiveMeasure {
+  title: string;
+  description: string;
+  importance: 'critical' | 'high' | 'medium';
+}
+
+interface AnalysisResult {
+  healthScore: number;
+  riskLevel: 'critical' | 'high' | 'medium' | 'low';
+  summary: string;
+  defects: DefectItem[];
+  priorityFixes: string[];
+  preventiveMeasures: PreventiveMeasure[];
+  metrics: {
+    securityScore: number;
+    accessibilityScore: number;
+    performanceScore: number;
+    seoScore: number;
+    codeQualityScore: number;
+  };
+}
+
+const categoryIcons: Record<string, React.ElementType> = {
+  security: Shield,
+  accessibility: User,
+  performance: Gauge,
+  seo: Search,
+  ux: Layers,
+  'code-quality': FileCode,
+  functionality: Bug,
+  'future-risk': TrendingDown,
+};
+
+const categoryColors: Record<string, string> = {
+  security: 'text-destructive',
+  accessibility: 'text-accent',
+  performance: 'text-warning',
+  seo: 'text-primary',
+  ux: 'text-success',
+  'code-quality': 'text-muted-foreground',
+  functionality: 'text-destructive',
+  'future-risk': 'text-warning',
+};
+
+const severityColors: Record<string, string> = {
+  critical: 'bg-destructive/20 text-destructive border-destructive/30',
+  high: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+  medium: 'bg-warning/20 text-warning border-warning/30',
+  low: 'bg-muted text-muted-foreground border-border',
+};
 
 export function WebsiteAnalysisPage() {
   const [url, setUrl] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [analysis, setAnalysis] = useState<WebsiteAnalysis | null>(null);
+  const [progressMessage, setProgressMessage] = useState('');
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'current' | 'future' | 'prevention'>('current');
 
   const analyzeWebsite = async () => {
     if (!url) return;
-    setIsAnalyzing(true); setProgress(0); setAnalysis(null);
-    for (const stage of [20, 40, 60, 80, 100]) { await new Promise((resolve) => setTimeout(resolve, 600)); setProgress(stage); }
-    const probability = Math.random();
-    setAnalysis({ url, htmlSize: Math.floor(Math.random() * 500 + 100), scriptCount: Math.floor(Math.random() * 20 + 5), brokenLinks: Math.floor(Math.random() * 5), jsComplexity: Math.floor(Math.random() * 80 + 20), securityHeaders: [{ name: 'Content-Security-Policy', present: Math.random() > 0.4 }, { name: 'X-Frame-Options', present: Math.random() > 0.3 }, { name: 'X-Content-Type-Options', present: Math.random() > 0.2 }, { name: 'Strict-Transport-Security', present: Math.random() > 0.5 }, { name: 'X-XSS-Protection', present: Math.random() > 0.3 }], defectProbability: probability, riskLevel: probability > 0.7 ? 'high' : probability > 0.4 ? 'medium' : 'low', issues: [...(Math.random() > 0.5 ? ['High JavaScript complexity detected'] : []), ...(Math.random() > 0.6 ? ['Missing critical security headers'] : []), ...(Math.random() > 0.7 ? ['Large DOM size may impact performance'] : [])] });
-    setIsAnalyzing(false);
+    setIsAnalyzing(true);
+    setProgress(0);
+    setAnalysis(null);
+    setError(null);
+
+    try {
+      // Step 1: Scrape the website
+      setProgressMessage('Fetching website content...');
+      setProgress(20);
+      
+      const scrapeResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scrape-website`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+
+      const scrapeData = await scrapeResponse.json();
+      
+      if (!scrapeResponse.ok || !scrapeData.success) {
+        throw new Error(scrapeData.error || 'Failed to scrape website');
+      }
+
+      setProgress(50);
+      setProgressMessage('Analyzing content with AI...');
+
+      // Step 2: Analyze with AI
+      const analyzeResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-website`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ websiteData: scrapeData.data, url }),
+      });
+
+      const analyzeData = await analyzeResponse.json();
+
+      if (!analyzeResponse.ok || !analyzeData.success) {
+        throw new Error(analyzeData.error || 'Failed to analyze website');
+      }
+
+      setProgress(100);
+      setProgressMessage('Analysis complete!');
+      setAnalysis(analyzeData.analysis);
+      toast.success('Website analysis complete!');
+    } catch (err) {
+      console.error('Analysis error:', err);
+      const message = err instanceof Error ? err.message : 'Analysis failed';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
+
+  const currentDefects = analysis?.defects.filter(d => !d.isFuturePrediction) || [];
+  const futureDefects = analysis?.defects.filter(d => d.isFuturePrediction) || [];
+
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'text-success';
+    if (score >= 60) return 'text-warning';
+    return 'text-destructive';
+  };
+
+  const metricsData = analysis?.metrics ? [
+    { subject: 'Security', score: analysis.metrics.securityScore },
+    { subject: 'Accessibility', score: analysis.metrics.accessibilityScore },
+    { subject: 'Performance', score: analysis.metrics.performanceScore },
+    { subject: 'SEO', score: analysis.metrics.seoScore },
+    { subject: 'Code Quality', score: analysis.metrics.codeQualityScore },
+  ] : [];
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div><h1 className="text-3xl font-display font-bold">Website Defect Analysis</h1><p className="text-muted-foreground mt-1">Analyze websites for potential defects and security vulnerabilities</p></div>
-      <div className="glass-card p-6"><div className="flex gap-4"><div className="flex-1 relative"><Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" /><Input type="url" placeholder="Enter website URL (e.g., https://example.com)" value={url} onChange={(e) => setUrl(e.target.value)} className="pl-10 h-12" /></div><Button onClick={analyzeWebsite} disabled={isAnalyzing || !url} size="lg">{isAnalyzing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing...</> : <><Search className="h-4 w-4 mr-2" />Analyze</>}</Button></div>{isAnalyzing && <div className="mt-6"><Progress value={progress} className="h-2" /><p className="text-sm text-muted-foreground mt-2 text-center">{progress < 20 ? 'Fetching page...' : progress < 40 ? 'Analyzing HTML structure...' : progress < 60 ? 'Checking JavaScript complexity...' : progress < 80 ? 'Validating security headers...' : 'Generating report...'}</p></div>}</div>
-      {analysis && <div className="space-y-6">
-        <div className={`glass-card p-6 border-l-4 ${analysis.riskLevel === 'high' ? 'border-l-destructive' : analysis.riskLevel === 'medium' ? 'border-l-warning' : 'border-l-success'}`}><div className="flex items-center justify-between"><div><h3 className="text-lg font-display font-semibold">Analysis Complete</h3><p className="text-muted-foreground text-sm">{analysis.url}</p></div><div className="text-right"><p className={`text-3xl font-bold ${analysis.riskLevel === 'high' ? 'text-destructive' : analysis.riskLevel === 'medium' ? 'text-warning' : 'text-success'}`}>{(analysis.defectProbability * 100).toFixed(1)}%</p><p className="text-sm text-muted-foreground capitalize">{analysis.riskLevel} Risk</p></div></div></div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4"><div className="glass-card p-5"><div className="flex items-center gap-3 mb-3"><FileCode className="h-5 w-5 text-primary" /><span className="text-sm text-muted-foreground">HTML Size</span></div><p className="text-2xl font-bold">{analysis.htmlSize} KB</p></div><div className="glass-card p-5"><div className="flex items-center gap-3 mb-3"><Gauge className="h-5 w-5 text-accent" /><span className="text-sm text-muted-foreground">Scripts</span></div><p className="text-2xl font-bold">{analysis.scriptCount}</p></div><div className="glass-card p-5"><div className="flex items-center gap-3 mb-3"><Link2 className="h-5 w-5 text-warning" /><span className="text-sm text-muted-foreground">Broken Links</span></div><p className={`text-2xl font-bold ${analysis.brokenLinks > 0 ? 'text-warning' : 'text-success'}`}>{analysis.brokenLinks}</p></div><div className="glass-card p-5"><div className="flex items-center gap-3 mb-3"><Shield className="h-5 w-5 text-success" /><span className="text-sm text-muted-foreground">JS Complexity</span></div><p className="text-2xl font-bold">{analysis.jsComplexity}%</p></div></div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><div className="glass-card p-6"><h3 className="text-lg font-display font-semibold mb-6">Security Headers</h3><div className="space-y-3">{analysis.securityHeaders.map((header) => <div key={header.name} className={`flex items-center justify-between p-3 rounded-lg ${header.present ? 'bg-success/10' : 'bg-destructive/10'}`}><div className="flex items-center gap-3">{header.present ? <Check className="h-4 w-4 text-success" /> : <X className="h-4 w-4 text-destructive" />}<span className="text-sm font-mono">{header.name}</span></div><span className={`text-xs font-medium ${header.present ? 'text-success' : 'text-destructive'}`}>{header.present ? 'Present' : 'Missing'}</span></div>)}</div></div><div className="glass-card p-6"><h3 className="text-lg font-display font-semibold mb-6">Detected Issues</h3>{analysis.issues.length > 0 ? <div className="space-y-3">{analysis.issues.map((issue, index) => <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-warning/10"><AlertTriangle className="h-4 w-4 text-warning mt-0.5" /><span className="text-sm">{issue}</span></div>)}</div> : <div className="flex items-center gap-3 p-4 rounded-lg bg-success/10"><Check className="h-5 w-5 text-success" /><span>No critical issues detected</span></div>}</div></div>
-      </div>}
+      <div>
+        <h1 className="text-3xl font-display font-bold">Website Defect Analysis</h1>
+        <p className="text-muted-foreground mt-1">AI-powered analysis to detect defects, predict future issues, and provide prevention strategies</p>
+      </div>
+
+      {/* URL Input */}
+      <div className="glass-card p-6">
+        <div className="flex gap-4">
+          <div className="flex-1 relative">
+            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input 
+              type="url" 
+              placeholder="Enter website URL (e.g., https://example.com)" 
+              value={url} 
+              onChange={(e) => setUrl(e.target.value)} 
+              className="pl-10 h-12"
+              onKeyDown={(e) => e.key === 'Enter' && analyzeWebsite()}
+            />
+          </div>
+          <Button onClick={analyzeWebsite} disabled={isAnalyzing || !url} size="lg">
+            {isAnalyzing ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing...</>
+            ) : (
+              <><Search className="h-4 w-4 mr-2" />Analyze</>
+            )}
+          </Button>
+        </div>
+        {isAnalyzing && (
+          <div className="mt-6">
+            <Progress value={progress} className="h-2" />
+            <p className="text-sm text-muted-foreground mt-2 text-center">{progressMessage}</p>
+          </div>
+        )}
+        {error && (
+          <div className="mt-4 p-4 rounded-lg bg-destructive/10 border border-destructive/30 flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Analysis Results */}
+      {analysis && (
+        <div className="space-y-6">
+          {/* Health Score Overview */}
+          <div className={`glass-card p-6 border-l-4 ${
+            analysis.riskLevel === 'critical' ? 'border-l-destructive' : 
+            analysis.riskLevel === 'high' ? 'border-l-orange-500' :
+            analysis.riskLevel === 'medium' ? 'border-l-warning' : 'border-l-success'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <h3 className="text-lg font-display font-semibold">Analysis Complete</h3>
+                <p className="text-muted-foreground text-sm truncate max-w-md">{url}</p>
+                <p className="text-sm mt-2">{analysis.summary}</p>
+              </div>
+              <div className="text-right">
+                <p className={`text-4xl font-bold ${getScoreColor(analysis.healthScore)}`}>
+                  {analysis.healthScore}
+                </p>
+                <p className="text-sm text-muted-foreground">Health Score</p>
+                <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium uppercase ${severityColors[analysis.riskLevel]}`}>
+                  {analysis.riskLevel} Risk
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Metrics Radar + Stats */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="chart-container">
+              <h3 className="text-lg font-display font-semibold mb-4">Category Scores</h3>
+              <ResponsiveContainer width="100%" height={250}>
+                <RadarChart data={metricsData}>
+                  <PolarGrid stroke="hsl(222, 30%, 18%)" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: 'hsl(215, 20%, 55%)', fontSize: 12 }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: 'hsl(215, 20%, 55%)', fontSize: 10 }} />
+                  <Radar name="Score" dataKey="score" stroke="hsl(175, 80%, 50%)" fill="hsl(175, 80%, 50%)" fillOpacity={0.3} strokeWidth={2} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="glass-card p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <Shield className="h-5 w-5 text-primary" />
+                  <span className="text-sm text-muted-foreground">Security</span>
+                </div>
+                <p className={`text-2xl font-bold ${getScoreColor(analysis.metrics.securityScore)}`}>
+                  {analysis.metrics.securityScore}%
+                </p>
+              </div>
+              <div className="glass-card p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <User className="h-5 w-5 text-accent" />
+                  <span className="text-sm text-muted-foreground">Accessibility</span>
+                </div>
+                <p className={`text-2xl font-bold ${getScoreColor(analysis.metrics.accessibilityScore)}`}>
+                  {analysis.metrics.accessibilityScore}%
+                </p>
+              </div>
+              <div className="glass-card p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <Gauge className="h-5 w-5 text-warning" />
+                  <span className="text-sm text-muted-foreground">Performance</span>
+                </div>
+                <p className={`text-2xl font-bold ${getScoreColor(analysis.metrics.performanceScore)}`}>
+                  {analysis.metrics.performanceScore}%
+                </p>
+              </div>
+              <div className="glass-card p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <Search className="h-5 w-5 text-success" />
+                  <span className="text-sm text-muted-foreground">SEO</span>
+                </div>
+                <p className={`text-2xl font-bold ${getScoreColor(analysis.metrics.seoScore)}`}>
+                  {analysis.metrics.seoScore}%
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Priority Fixes */}
+          {analysis.priorityFixes.length > 0 && (
+            <div className="glass-card p-6">
+              <h3 className="text-lg font-display font-semibold mb-4 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-warning" />
+                Top Priority Fixes
+              </h3>
+              <div className="space-y-2">
+                {analysis.priorityFixes.map((fix, index) => (
+                  <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-warning/5 border border-warning/20">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-warning/20 text-warning text-sm font-bold">
+                      {index + 1}
+                    </span>
+                    <span className="text-sm">{fix}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tabs for Defects */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="current" className="flex items-center gap-2">
+                <Bug className="h-4 w-4" />
+                Current Defects ({currentDefects.length})
+              </TabsTrigger>
+              <TabsTrigger value="future" className="flex items-center gap-2">
+                <TrendingDown className="h-4 w-4" />
+                Future Predictions ({futureDefects.length})
+              </TabsTrigger>
+              <TabsTrigger value="prevention" className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Prevention ({analysis.preventiveMeasures.length})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="current" className="mt-4 space-y-4">
+              {currentDefects.length === 0 ? (
+                <div className="glass-card p-8 text-center">
+                  <Check className="h-12 w-12 text-success mx-auto mb-3" />
+                  <p className="font-semibold">No Current Defects Detected</p>
+                  <p className="text-sm text-muted-foreground">Great job! Your website appears to be defect-free.</p>
+                </div>
+              ) : (
+                currentDefects.map((defect) => {
+                  const Icon = categoryIcons[defect.category] || Bug;
+                  return (
+                    <div key={defect.id} className="glass-card p-5 space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          <div className={`p-2 rounded-lg bg-background ${categoryColors[defect.category]}`}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">{defect.title}</h4>
+                            <p className="text-sm text-muted-foreground capitalize">{defect.category.replace('-', ' ')}</p>
+                          </div>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium uppercase ${severityColors[defect.severity]}`}>
+                          {defect.severity}
+                        </span>
+                      </div>
+                      <div className="pl-12 space-y-3">
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Location</p>
+                          <p className="text-sm font-mono bg-muted/50 px-2 py-1 rounded inline-block">{defect.location}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Description</p>
+                          <p className="text-sm">{defect.description}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Impact</p>
+                          <p className="text-sm text-warning">{defect.impact}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-success/5 border border-success/20">
+                          <p className="text-xs font-medium text-success uppercase mb-1">Recommended Fix</p>
+                          <p className="text-sm">{defect.fix}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </TabsContent>
+
+            <TabsContent value="future" className="mt-4 space-y-4">
+              {futureDefects.length === 0 ? (
+                <div className="glass-card p-8 text-center">
+                  <TrendingUp className="h-12 w-12 text-success mx-auto mb-3" />
+                  <p className="font-semibold">No Future Risks Predicted</p>
+                  <p className="text-sm text-muted-foreground">Your website appears to be well-maintained.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="p-4 rounded-lg bg-accent/10 border border-accent/20">
+                    <p className="text-sm flex items-center gap-2">
+                      <Info className="h-4 w-4 text-accent" />
+                      These are predicted future issues based on current patterns and common degradation paths.
+                    </p>
+                  </div>
+                  {futureDefects.map((defect) => {
+                    const Icon = categoryIcons[defect.category] || TrendingDown;
+                    return (
+                      <div key={defect.id} className="glass-card p-5 space-y-4 border border-warning/20">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3">
+                            <div className={`p-2 rounded-lg bg-warning/10 text-warning`}>
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold flex items-center gap-2">
+                                {defect.title}
+                                <span className="text-xs px-2 py-0.5 rounded bg-warning/20 text-warning">Predicted</span>
+                              </h4>
+                              <p className="text-sm text-muted-foreground capitalize">{defect.category.replace('-', ' ')}</p>
+                            </div>
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium uppercase ${severityColors[defect.severity]}`}>
+                            {defect.severity}
+                          </span>
+                        </div>
+                        <div className="pl-12 space-y-3">
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Likely Location</p>
+                            <p className="text-sm font-mono bg-muted/50 px-2 py-1 rounded inline-block">{defect.location}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Prediction Details</p>
+                            <p className="text-sm">{defect.description}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Potential Impact</p>
+                            <p className="text-sm text-warning">{defect.impact}</p>
+                          </div>
+                          <div className="p-3 rounded-lg bg-success/5 border border-success/20">
+                            <p className="text-xs font-medium text-success uppercase mb-1">Prevention Strategy</p>
+                            <p className="text-sm">{defect.fix}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </TabsContent>
+
+            <TabsContent value="prevention" className="mt-4 space-y-4">
+              {analysis.preventiveMeasures.length === 0 ? (
+                <div className="glass-card p-8 text-center">
+                  <Check className="h-12 w-12 text-success mx-auto mb-3" />
+                  <p className="font-semibold">No Additional Prevention Needed</p>
+                  <p className="text-sm text-muted-foreground">Your website follows best practices.</p>
+                </div>
+              ) : (
+                analysis.preventiveMeasures.map((measure, index) => (
+                  <div key={index} className="glass-card p-5">
+                    <div className="flex items-start gap-4">
+                      <div className={`p-2 rounded-lg ${
+                        measure.importance === 'critical' ? 'bg-destructive/10 text-destructive' :
+                        measure.importance === 'high' ? 'bg-warning/10 text-warning' :
+                        'bg-primary/10 text-primary'
+                      }`}>
+                        <Shield className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-semibold">{measure.title}</h4>
+                          <span className={`px-2 py-0.5 rounded text-xs uppercase font-medium ${
+                            measure.importance === 'critical' ? 'bg-destructive/20 text-destructive' :
+                            measure.importance === 'high' ? 'bg-warning/20 text-warning' :
+                            'bg-primary/20 text-primary'
+                          }`}>
+                            {measure.importance}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{measure.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
+      )}
     </div>
   );
 }
