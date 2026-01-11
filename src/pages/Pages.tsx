@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { useAuth } from '@/App';
 import { Button, Input, Textarea, Label, Checkbox, Switch, Progress, Tabs, TabsContent, TabsList, TabsTrigger, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatCard, toast, cn } from '@/components/UI';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { Brain, Mail, Lock, User, Loader2, AlertCircle, Upload, FileSpreadsheet, Check, X, AlertTriangle, Database, TrendingUp, Shield, Activity, Cpu, Target, Zap, Layers, Filter, Sparkles, ArrowRight, Info, Play, Pause, RotateCcw, Dna, Bug, Globe, Search, FileCode, Link2, Gauge, TrendingDown, FileText, Download, Calendar, BarChart3, Server, Bell, Save, LayoutDashboard, Settings, LogOut, GitBranch, RefreshCw, Workflow } from 'lucide-react';
@@ -27,17 +26,15 @@ const navItems: NavItem[] = [
   { icon: Globe, label: 'Website Analysis', href: '/website-analysis' },
   { icon: BarChart3, label: 'Metrics', href: '/metrics' },
   { icon: FileText, label: 'Reports', href: '/reports' },
-  { icon: GitBranch, label: 'Cross-Project', href: '/cross-project', adminOnly: true },
-  { icon: RefreshCw, label: 'Incremental Learning', href: '/incremental', adminOnly: true },
-  { icon: Workflow, label: 'DevOps', href: '/devops', adminOnly: true },
-  { icon: Activity, label: 'Admin Analytics', href: '/analytics', adminOnly: true },
+  { icon: GitBranch, label: 'Cross-Project', href: '/cross-project' },
+  { icon: RefreshCw, label: 'Incremental Learning', href: '/incremental' },
+  { icon: Workflow, label: 'DevOps', href: '/devops' },
+  { icon: Activity, label: 'Analytics', href: '/analytics' },
   { icon: Settings, label: 'Settings', href: '/settings' },
 ];
 
 function Sidebar() {
   const location = useLocation();
-  const { user, logout } = useAuth();
-  const filteredNavItems = navItems.filter((item) => !item.adminOnly || user?.role === 'admin');
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar border-r border-sidebar-border">
       <div className="flex h-full flex-col">
@@ -46,16 +43,15 @@ function Sidebar() {
           <div><h1 className="font-display text-lg font-bold gradient-text">DefectAI</h1><p className="text-xs text-muted-foreground">Swarm Intelligence</p></div>
         </div>
         <nav className="flex-1 overflow-y-auto px-3 py-4 scrollbar-hide">
-          <ul className="space-y-1">{filteredNavItems.map((item) => {
+          <ul className="space-y-1">{navItems.map((item) => {
             const isActive = location.pathname === item.href;
             return (<li key={item.href}><Link to={item.href} className={cn('sidebar-item', isActive && 'active')}><item.icon className="h-5 w-5" /><span className="text-sm font-medium">{item.label}</span></Link></li>);
           })}</ul>
         </nav>
         <div className="border-t border-sidebar-border p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20"><span className="text-sm font-semibold text-primary">{user?.name?.charAt(0).toUpperCase()}</span></div>
-            <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{user?.name}</p><p className="text-xs text-muted-foreground capitalize">{user?.role}</p></div>
-            <button onClick={logout} className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"><LogOut className="h-4 w-4" /></button>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20"><span className="text-sm font-semibold text-primary">A</span></div>
+            <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">Admin User</p><p className="text-xs text-muted-foreground capitalize">admin</p></div>
           </div>
         </div>
       </div>
@@ -72,119 +68,9 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ==================== AUTH PAGES ====================
-export function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { login } = useAuth();
-  const navigate = useNavigate();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
-    try {
-      const success = await login(email, password);
-      if (success) { toast.success('Welcome back!'); navigate('/dashboard'); }
-      else setError('Invalid email or password');
-    } catch { setError('An error occurred. Please try again.'); }
-    finally { setIsLoading(false); }
-  };
-
-  return (
-    <div className="min-h-screen flex">
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-accent/20" />
-        <div className="absolute inset-0 flex items-center justify-center p-12">
-          <div className="max-w-md text-center space-y-6">
-            <div className="inline-flex p-4 rounded-2xl bg-primary/10 animate-pulse-glow"><Brain className="h-16 w-16 text-primary" /></div>
-            <h1 className="text-4xl font-display font-bold">Hybrid Swarm-Optimized <span className="gradient-text">ML Framework</span></h1>
-            <p className="text-muted-foreground text-lg">Advanced software defect prediction using PSO, GA, and ACO optimization algorithms combined with ensemble machine learning.</p>
-            <div className="flex justify-center gap-8 pt-4">
-              <div className="text-center"><p className="text-3xl font-bold text-primary">99.2%</p><p className="text-sm text-muted-foreground">Accuracy</p></div>
-              <div className="text-center"><p className="text-3xl font-bold text-success">500+</p><p className="text-sm text-muted-foreground">Projects Analyzed</p></div>
-              <div className="text-center"><p className="text-3xl font-bold text-accent">12</p><p className="text-sm text-muted-foreground">ML Models</p></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-md space-y-8">
-          <div className="text-center space-y-2">
-            <div className="inline-flex items-center gap-2 lg:hidden mb-4"><Brain className="h-8 w-8 text-primary" /><span className="text-2xl font-display font-bold">DefectAI</span></div>
-            <h2 className="text-3xl font-display font-bold">Welcome Back</h2>
-            <p className="text-muted-foreground">Sign in to continue to your dashboard</p>
-          </div>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm"><AlertCircle className="h-4 w-4" />{error}</div>}
-            <div className="space-y-2"><Label htmlFor="email">Email</Label><div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" required /></div></div>
-            <div className="space-y-2"><Label htmlFor="password">Password</Label><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" required /></div></div>
-            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>{isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in...</> : 'Sign In'}</Button>
-          </form>
-          <div className="space-y-4">
-            <p className="text-center text-sm text-muted-foreground">Don't have an account? <Link to="/register" className="text-primary hover:underline">Create one</Link></p>
-            <div className="glass-card p-4 space-y-2"><p className="text-xs font-medium text-muted-foreground">Demo Credentials:</p><div className="grid grid-cols-2 gap-2 text-xs"><div className="space-y-1"><p className="text-primary">Admin:</p><p>admin@defectai.com</p><p>admin123</p></div><div className="space-y-1"><p className="text-primary">User:</p><p>user@defectai.com</p><p>user123</p></div></div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function RegisterPage() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('user');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { register } = useAuth();
-  const navigate = useNavigate();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (password !== confirmPassword) { setError('Passwords do not match'); return; }
-    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
-    setIsLoading(true);
-    try {
-      const success = await register(email, password, name, role);
-      if (success) { toast.success('Account created successfully!'); navigate('/dashboard'); }
-      else setError('Registration failed. Please try again.');
-    } catch { setError('An error occurred. Please try again.'); }
-    finally { setIsLoading(false); }
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center p-8">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center space-y-2">
-          <Link to="/" className="inline-flex items-center gap-2 mb-4"><Brain className="h-8 w-8 text-primary" /><span className="text-2xl font-display font-bold">DefectAI</span></Link>
-          <h2 className="text-3xl font-display font-bold">Create Account</h2>
-          <p className="text-muted-foreground">Join the future of software quality analysis</p>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {error && <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm"><AlertCircle className="h-4 w-4" />{error}</div>}
-          <div className="space-y-2"><Label htmlFor="name">Full Name</Label><div className="relative"><User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input id="name" type="text" placeholder="Dr. John Doe" value={name} onChange={(e) => setName(e.target.value)} className="pl-10" required /></div></div>
-          <div className="space-y-2"><Label htmlFor="email">Email</Label><div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" required /></div></div>
-          <div className="space-y-2"><Label htmlFor="role">Account Type</Label><Select value={role} onValueChange={(value: UserRole) => setRole(value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="user">Researcher / Developer</SelectItem><SelectItem value="admin">Administrator</SelectItem></SelectContent></Select></div>
-          <div className="space-y-2"><Label htmlFor="password">Password</Label><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" required /></div></div>
-          <div className="space-y-2"><Label htmlFor="confirmPassword">Confirm Password</Label><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input id="confirmPassword" type="password" placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="pl-10" required /></div></div>
-          <Button type="submit" className="w-full" size="lg" disabled={isLoading}>{isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating account...</> : 'Create Account'}</Button>
-        </form>
-        <p className="text-center text-sm text-muted-foreground">Already have an account? <Link to="/login" className="text-primary hover:underline">Sign in</Link></p>
-      </div>
-    </div>
-  );
-}
-
 export function Index() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
-  useEffect(() => { navigate(isAuthenticated ? '/dashboard' : '/login'); }, [isAuthenticated, navigate]);
+  useEffect(() => { navigate('/dashboard'); }, [navigate]);
   return null;
 }
 
@@ -195,11 +81,10 @@ const modelPerformance = [{ name: 'Logistic Reg.', accuracy: 78, f1: 75 }, { nam
 const recentPredictions = [{ module: 'auth_handler.py', risk: 'high', probability: 0.89, time: '2 min ago' }, { module: 'data_processor.js', risk: 'low', probability: 0.12, time: '5 min ago' }, { module: 'api_gateway.go', risk: 'medium', probability: 0.45, time: '12 min ago' }, { module: 'cache_manager.py', risk: 'low', probability: 0.08, time: '18 min ago' }, { module: 'payment_service.ts', risk: 'high', probability: 0.92, time: '25 min ago' }];
 
 export function Dashboard() {
-  const { user } = useAuth();
   return (
     <div className="space-y-8 animate-fade-in">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-3xl font-display font-bold">Welcome back, <span className="gradient-text">{user?.name?.split(' ')[0]}</span></h1><p className="text-muted-foreground mt-1">Here's an overview of your software defect prediction system</p></div>
+        <div><h1 className="text-3xl font-display font-bold">Welcome back, <span className="gradient-text">Admin</span></h1><p className="text-muted-foreground mt-1">Here's an overview of your software defect prediction system</p></div>
         <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-success/10 text-success"><Activity className="h-4 w-4" /><span className="text-sm font-medium">System Online</span></div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -961,7 +846,6 @@ export function ReportsPage() {
 
 // ==================== SETTINGS PAGE ====================
 export function SettingsPage() {
-  const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [apiEndpoint, setApiEndpoint] = useState('https://api.defectai.com/v1');
 
@@ -971,7 +855,7 @@ export function SettingsPage() {
     <div className="space-y-8 animate-fade-in">
       <div><h1 className="text-3xl font-display font-bold">Settings</h1><p className="text-muted-foreground mt-1">Configure your DefectAI experience</p></div>
       <Tabs defaultValue="profile"><TabsList className="mb-6"><TabsTrigger value="profile" className="gap-2"><User className="h-4 w-4" />Profile</TabsTrigger><TabsTrigger value="api" className="gap-2"><Server className="h-4 w-4" />API Configuration</TabsTrigger><TabsTrigger value="notifications" className="gap-2"><Bell className="h-4 w-4" />Notifications</TabsTrigger></TabsList>
-        <TabsContent value="profile" className="space-y-6"><div className="glass-card p-6"><h3 className="text-lg font-display font-semibold mb-6">Profile Information</h3><div className="flex items-start gap-8"><div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary/20 text-3xl font-bold text-primary">{user?.name?.charAt(0).toUpperCase()}</div><div className="flex-1 space-y-4"><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>Full Name</Label><Input defaultValue={user?.name} /></div><div className="space-y-2"><Label>Email</Label><Input defaultValue={user?.email} type="email" /></div></div><div className="space-y-2"><Label>Role</Label><Input value={user?.role === 'admin' ? 'Administrator' : 'Researcher'} disabled /></div></div></div></div><div className="glass-card p-6"><h3 className="text-lg font-display font-semibold mb-6">Security</h3><div className="space-y-4"><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>Current Password</Label><Input type="password" placeholder="••••••••" /></div><div className="space-y-2"><Label>New Password</Label><Input type="password" placeholder="••••••••" /></div></div><div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50"><div className="flex items-center gap-3"><Shield className="h-5 w-5 text-primary" /><div><p className="font-medium">Two-Factor Authentication</p><p className="text-sm text-muted-foreground">Add an extra layer of security</p></div></div><Switch /></div></div></div></TabsContent>
+        <TabsContent value="profile" className="space-y-6"><div className="glass-card p-6"><h3 className="text-lg font-display font-semibold mb-6">Profile Information</h3><div className="flex items-start gap-8"><div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary/20 text-3xl font-bold text-primary">A</div><div className="flex-1 space-y-4"><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>Full Name</Label><Input defaultValue="Admin User" /></div><div className="space-y-2"><Label>Email</Label><Input defaultValue="admin@defectai.com" type="email" /></div></div><div className="space-y-2"><Label>Role</Label><Input value="Administrator" disabled /></div></div></div></div><div className="glass-card p-6"><h3 className="text-lg font-display font-semibold mb-6">Security</h3><div className="space-y-4"><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>Current Password</Label><Input type="password" placeholder="••••••••" /></div><div className="space-y-2"><Label>New Password</Label><Input type="password" placeholder="••••••••" /></div></div><div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50"><div className="flex items-center gap-3"><Shield className="h-5 w-5 text-primary" /><div><p className="font-medium">Two-Factor Authentication</p><p className="text-sm text-muted-foreground">Add an extra layer of security</p></div></div><Switch /></div></div></div></TabsContent>
         <TabsContent value="api" className="space-y-6"><div className="glass-card p-6"><h3 className="text-lg font-display font-semibold mb-6">API Configuration</h3><div className="space-y-4"><div className="space-y-2"><Label>Python Backend Endpoint</Label><Input placeholder="https://your-api.com/v1" value={apiEndpoint} onChange={(e) => setApiEndpoint(e.target.value)} /><p className="text-xs text-muted-foreground">Connect to your deployed Python ML backend API</p></div><div className="space-y-2"><Label>API Key</Label><Input type="password" placeholder="sk-••••••••••••••••" /></div><div className="flex items-center gap-4"><Button variant="outline">Test Connection</Button><span className="text-sm text-muted-foreground">Status: Not Connected</span></div></div></div><div className="glass-card p-6"><h3 className="text-lg font-display font-semibold mb-6">Model Configuration</h3><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>Default Model</Label><Input defaultValue="Stacking Ensemble" /></div><div className="space-y-2"><Label>Prediction Threshold</Label><Input type="number" step="0.1" defaultValue="0.5" /></div></div></div></TabsContent>
         <TabsContent value="notifications" className="space-y-6"><div className="glass-card p-6"><h3 className="text-lg font-display font-semibold mb-6">Notification Preferences</h3><div className="space-y-4">{[{ label: 'Training Complete', desc: 'When model training finishes' }, { label: 'High-Risk Detection', desc: 'When high-risk defects are detected' }, { label: 'Report Generated', desc: 'When reports are ready for download' }, { label: 'System Updates', desc: 'New features and improvements' }].map((item) => (<div key={item.label} className="flex items-center justify-between p-4 rounded-lg bg-secondary/50"><div><p className="font-medium">{item.label}</p><p className="text-sm text-muted-foreground">{item.desc}</p></div><Switch defaultChecked /></div>))}</div></div></TabsContent>
       </Tabs>
