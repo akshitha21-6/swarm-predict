@@ -392,7 +392,10 @@ const severityColors: Record<string, string> = {
 };
 
 export function WebsiteAnalysisPage() {
+  const [inputMode, setInputMode] = useState<'url' | 'manual'>('url');
   const [url, setUrl] = useState('');
+  const [manualContent, setManualContent] = useState('');
+  const [contentSource, setContentSource] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState('');
@@ -401,27 +404,50 @@ export function WebsiteAnalysisPage() {
   const [activeTab, setActiveTab] = useState<'current' | 'future' | 'prevention'>('current');
 
   const analyzeWebsite = async () => {
-    if (!url) return;
+    if (inputMode === 'url' && !url) return;
+    if (inputMode === 'manual' && !manualContent.trim()) return;
+    
     setIsAnalyzing(true);
     setProgress(0);
     setAnalysis(null);
     setError(null);
 
     try {
-      // Step 1: Scrape the website
-      setProgressMessage('Fetching website content...');
-      setProgress(20);
-      
-      const scrapeResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scrape-website`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
-      });
+      let websiteData;
+      let sourceUrl = url;
 
-      const scrapeData = await scrapeResponse.json();
-      
-      if (!scrapeResponse.ok || !scrapeData.success) {
-        throw new Error(scrapeData.error || 'Failed to scrape website');
+      if (inputMode === 'url') {
+        // Step 1: Scrape the website
+        setProgressMessage('Fetching website content...');
+        setProgress(20);
+        
+        const scrapeResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scrape-website`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url }),
+        });
+
+        const scrapeData = await scrapeResponse.json();
+        
+        if (!scrapeResponse.ok || !scrapeData.success) {
+          throw new Error(scrapeData.error || 'Failed to scrape website');
+        }
+        
+        websiteData = scrapeData.data;
+      } else {
+        // Manual content mode
+        setProgressMessage('Processing manual content...');
+        setProgress(20);
+        sourceUrl = contentSource || 'Manual Input';
+        
+        // Determine if content is HTML or plain text
+        const isHtml = manualContent.trim().startsWith('<') || manualContent.includes('</');
+        websiteData = {
+          markdown: isHtml ? null : manualContent,
+          html: isHtml ? manualContent : null,
+          links: [],
+          metadata: { title: contentSource || 'Manual Content', sourceURL: sourceUrl }
+        };
       }
 
       setProgress(50);
@@ -431,7 +457,7 @@ export function WebsiteAnalysisPage() {
       const analyzeResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-website`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ websiteData: scrapeData.data, url }),
+        body: JSON.stringify({ websiteData, url: sourceUrl }),
       });
 
       const analyzeData = await analyzeResponse.json();
@@ -443,7 +469,7 @@ export function WebsiteAnalysisPage() {
       setProgress(100);
       setProgressMessage('Analysis complete!');
       setAnalysis(analyzeData.analysis);
-      toast.success('Website analysis complete!');
+      toast.success('Content analysis complete!');
     } catch (err) {
       console.error('Analysis error:', err);
       const message = err instanceof Error ? err.message : 'Analysis failed';
@@ -478,28 +504,86 @@ export function WebsiteAnalysisPage() {
         <p className="text-muted-foreground mt-1">AI-powered analysis to detect defects, predict future issues, and provide prevention strategies</p>
       </div>
 
-      {/* URL Input */}
+      {/* Input Mode Selection */}
       <div className="glass-card p-6">
-        <div className="flex gap-4">
-          <div className="flex-1 relative">
-            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input 
-              type="url" 
-              placeholder="Enter website URL (e.g., https://example.com)" 
-              value={url} 
-              onChange={(e) => setUrl(e.target.value)} 
-              className="pl-10 h-12"
-              onKeyDown={(e) => e.key === 'Enter' && analyzeWebsite()}
-            />
-          </div>
-          <Button onClick={analyzeWebsite} disabled={isAnalyzing || !url} size="lg">
-            {isAnalyzing ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing...</>
-            ) : (
-              <><Search className="h-4 w-4 mr-2" />Analyze</>
-            )}
-          </Button>
-        </div>
+        <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'url' | 'manual')}>
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="url" className="flex items-center gap-2">
+              <Globe className="h-4 w-4" />
+              URL Scraping
+            </TabsTrigger>
+            <TabsTrigger value="manual" className="flex items-center gap-2">
+              <FileCode className="h-4 w-4" />
+              Manual Content
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="url" className="mt-0">
+            <div className="flex gap-4">
+              <div className="flex-1 relative">
+                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input 
+                  type="url" 
+                  placeholder="Enter website URL (e.g., https://example.com)" 
+                  value={url} 
+                  onChange={(e) => setUrl(e.target.value)} 
+                  className="pl-10 h-12"
+                  onKeyDown={(e) => e.key === 'Enter' && analyzeWebsite()}
+                />
+              </div>
+              <Button onClick={analyzeWebsite} disabled={isAnalyzing || !url} size="lg">
+                {isAnalyzing ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing...</>
+                ) : (
+                  <><Search className="h-4 w-4 mr-2" />Analyze</>
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              <Info className="h-3 w-3 inline mr-1" />
+              Note: Some sites (Instagram, Facebook, Twitter) may not be supported. Use Manual Content for those.
+            </p>
+          </TabsContent>
+
+          <TabsContent value="manual" className="mt-0 space-y-4">
+            <div>
+              <Label htmlFor="source" className="text-sm font-medium">Source Name (optional)</Label>
+              <Input 
+                id="source"
+                placeholder="e.g., Instagram Post, Facebook Page, Twitter Profile" 
+                value={contentSource} 
+                onChange={(e) => setContentSource(e.target.value)} 
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <Label htmlFor="content" className="text-sm font-medium">Paste Content (HTML or Text)</Label>
+              <Textarea 
+                id="content"
+                placeholder="Paste the website content, HTML code, or text you want to analyze...
+
+You can:
+• Copy-paste the visible text from any webpage
+• Copy the HTML source code (View Source)
+• Paste social media post content
+• Paste any text content for analysis" 
+                value={manualContent} 
+                onChange={(e) => setManualContent(e.target.value)} 
+                className="mt-1.5 min-h-[200px] font-mono text-sm"
+              />
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={analyzeWebsite} disabled={isAnalyzing || !manualContent.trim()} size="lg">
+                {isAnalyzing ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing...</>
+                ) : (
+                  <><Search className="h-4 w-4 mr-2" />Analyze Content</>
+                )}
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
+
         {isAnalyzing && (
           <div className="mt-6">
             <Progress value={progress} className="h-2" />
