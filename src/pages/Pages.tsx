@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Button, Input, Textarea, Label, Checkbox, Switch, Progress, Tabs, TabsContent, TabsList, TabsTrigger, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatCard, toast, cn } from '@/components/UI';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
-import { Brain, Mail, Lock, User, Loader2, AlertCircle, Upload, FileSpreadsheet, Check, X, AlertTriangle, Database, TrendingUp, Shield, Activity, Cpu, Target, Zap, Layers, Filter, Sparkles, ArrowRight, Info, Play, Pause, RotateCcw, Dna, Bug, Globe, Search, FileCode, Link2, Gauge, TrendingDown, FileText, Download, Calendar, BarChart3, Server, Bell, Save, LayoutDashboard, Settings, LogOut, GitBranch, RefreshCw, Workflow } from 'lucide-react';
+import { Brain, Mail, Lock, User, Loader2, AlertCircle, Upload, FileSpreadsheet, Check, X, AlertTriangle, Database, TrendingUp, Shield, Activity, Cpu, Target, Zap, Layers, Filter, Sparkles, ArrowRight, Info, Play, Pause, RotateCcw, Dna, Bug, Globe, Search, FileCode, Link2, Gauge, TrendingDown, FileText, Download, Calendar, BarChart3, Server, Bell, Save, LayoutDashboard, Settings, LogOut, GitBranch, RefreshCw, Workflow, Plus } from 'lucide-react';
 
 // ==================== TYPES ====================
 export type UserRole = 'admin' | 'user';
@@ -330,7 +330,7 @@ export function PredictionsPage() {
 // ==================== WEBSITE ANALYSIS PAGE ====================
 interface DefectItem {
   id: string;
-  category: 'security' | 'accessibility' | 'performance' | 'seo' | 'ux' | 'code-quality' | 'functionality' | 'future-risk';
+  category: 'security' | 'accessibility' | 'performance' | 'seo' | 'ux' | 'code-quality' | 'functionality' | 'future-risk' | 'engagement' | 'brand-safety' | 'content-quality';
   severity: 'critical' | 'high' | 'medium' | 'low';
   title: string;
   location: string;
@@ -359,8 +359,53 @@ interface AnalysisResult {
     performanceScore: number;
     seoScore: number;
     codeQualityScore: number;
+    engagementScore?: number;
+    brandSafetyScore?: number;
+    contentQualityScore?: number;
   };
 }
+
+type SocialPlatform = 'instagram' | 'snapchat' | 'tiktok' | 'twitter' | 'facebook' | 'linkedin' | 'youtube';
+
+interface SocialMediaPost {
+  platform: SocialPlatform;
+  postType: string;
+  caption: string;
+  hashtags: string;
+  mentions: string;
+  likes: string;
+  comments: string;
+  shares: string;
+  views: string;
+  engagementRate: string;
+  postDate: string;
+  additionalContext: string;
+}
+
+const socialPlatformConfig: Record<SocialPlatform, { label: string; icon: string; color: string; postTypes: string[] }> = {
+  instagram: { label: 'Instagram', icon: '📸', color: 'from-pink-500 to-purple-500', postTypes: ['Feed Post', 'Reel', 'Story', 'IGTV', 'Carousel'] },
+  snapchat: { label: 'Snapchat', icon: '👻', color: 'from-yellow-400 to-yellow-500', postTypes: ['Snap', 'Story', 'Spotlight'] },
+  tiktok: { label: 'TikTok', icon: '🎵', color: 'from-black to-pink-500', postTypes: ['Video', 'Duet', 'Stitch', 'Live'] },
+  twitter: { label: 'Twitter/X', icon: '𝕏', color: 'from-gray-700 to-gray-900', postTypes: ['Tweet', 'Thread', 'Reply', 'Retweet'] },
+  facebook: { label: 'Facebook', icon: '📘', color: 'from-blue-600 to-blue-700', postTypes: ['Post', 'Reel', 'Story', 'Video', 'Event'] },
+  linkedin: { label: 'LinkedIn', icon: '💼', color: 'from-blue-700 to-blue-800', postTypes: ['Post', 'Article', 'Video', 'Poll'] },
+  youtube: { label: 'YouTube', icon: '▶️', color: 'from-red-600 to-red-700', postTypes: ['Video', 'Short', 'Live', 'Community Post'] },
+};
+
+const emptySocialPost: SocialMediaPost = {
+  platform: 'instagram',
+  postType: 'Feed Post',
+  caption: '',
+  hashtags: '',
+  mentions: '',
+  likes: '',
+  comments: '',
+  shares: '',
+  views: '',
+  engagementRate: '',
+  postDate: '',
+  additionalContext: '',
+};
 
 const categoryIcons: Record<string, React.ElementType> = {
   security: Shield,
@@ -371,6 +416,9 @@ const categoryIcons: Record<string, React.ElementType> = {
   'code-quality': FileCode,
   functionality: Bug,
   'future-risk': TrendingDown,
+  engagement: TrendingUp,
+  'brand-safety': Shield,
+  'content-quality': FileText,
 };
 
 const categoryColors: Record<string, string> = {
@@ -382,6 +430,9 @@ const categoryColors: Record<string, string> = {
   'code-quality': 'text-muted-foreground',
   functionality: 'text-destructive',
   'future-risk': 'text-warning',
+  engagement: 'text-success',
+  'brand-safety': 'text-primary',
+  'content-quality': 'text-accent',
 };
 
 const severityColors: Record<string, string> = {
@@ -392,7 +443,7 @@ const severityColors: Record<string, string> = {
 };
 
 export function WebsiteAnalysisPage() {
-  const [inputMode, setInputMode] = useState<'url' | 'manual'>('url');
+  const [inputMode, setInputMode] = useState<'url' | 'manual' | 'social'>('url');
   const [url, setUrl] = useState('');
   const [manualContent, setManualContent] = useState('');
   const [contentSource, setContentSource] = useState('');
@@ -402,10 +453,60 @@ export function WebsiteAnalysisPage() {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'current' | 'future' | 'prevention'>('current');
+  const [socialPost, setSocialPost] = useState<SocialMediaPost>(emptySocialPost);
+  const [batchPosts, setBatchPosts] = useState<SocialMediaPost[]>([]);
+
+  const formatSocialPostForAnalysis = (post: SocialMediaPost): string => {
+    const config = socialPlatformConfig[post.platform];
+    return `
+=== ${config.label.toUpperCase()} ${post.postType.toUpperCase()} ANALYSIS ===
+
+PLATFORM: ${config.label}
+POST TYPE: ${post.postType}
+${post.postDate ? `DATE: ${post.postDate}` : ''}
+
+--- CONTENT ---
+CAPTION/TEXT:
+${post.caption || '[No caption provided]'}
+
+HASHTAGS: ${post.hashtags || 'None'}
+MENTIONS: ${post.mentions || 'None'}
+
+--- ENGAGEMENT METRICS ---
+Likes: ${post.likes || 'N/A'}
+Comments: ${post.comments || 'N/A'}
+Shares/Reposts: ${post.shares || 'N/A'}
+Views: ${post.views || 'N/A'}
+Engagement Rate: ${post.engagementRate || 'N/A'}
+
+--- ADDITIONAL CONTEXT ---
+${post.additionalContext || 'None provided'}
+
+Please analyze this social media content for:
+1. Content Quality (grammar, clarity, messaging)
+2. Engagement Potential (call-to-action, hashtag effectiveness)
+3. Brand Safety (inappropriate content, potential controversy)
+4. Platform Best Practices (optimal length, format usage)
+5. Future Risks (trend relevance, potential backlash)
+6. Improvement Recommendations
+`.trim();
+  };
+
+  const addBatchPost = () => {
+    if (socialPost.caption.trim()) {
+      setBatchPosts([...batchPosts, { ...socialPost }]);
+      setSocialPost({ ...emptySocialPost, platform: socialPost.platform });
+    }
+  };
+
+  const removeBatchPost = (index: number) => {
+    setBatchPosts(batchPosts.filter((_, i) => i !== index));
+  };
 
   const analyzeWebsite = async () => {
     if (inputMode === 'url' && !url) return;
     if (inputMode === 'manual' && !manualContent.trim()) return;
+    if (inputMode === 'social' && !socialPost.caption.trim() && batchPosts.length === 0) return;
     
     setIsAnalyzing(true);
     setProgress(0);
@@ -434,6 +535,27 @@ export function WebsiteAnalysisPage() {
         }
         
         websiteData = scrapeData.data;
+      } else if (inputMode === 'social') {
+        // Social media content mode
+        setProgressMessage('Processing social media content...');
+        setProgress(20);
+        
+        const postsToAnalyze = batchPosts.length > 0 ? batchPosts : [socialPost];
+        const formattedContent = postsToAnalyze.map(formatSocialPostForAnalysis).join('\n\n---\n\n');
+        const platformLabel = socialPlatformConfig[socialPost.platform].label;
+        sourceUrl = `${platformLabel} Analysis`;
+        
+        websiteData = {
+          markdown: formattedContent,
+          html: null,
+          links: [],
+          metadata: { 
+            title: `${platformLabel} Content Analysis`, 
+            sourceURL: sourceUrl,
+            platform: socialPost.platform,
+            isSocialMedia: true
+          }
+        };
       } else {
         // Manual content mode
         setProgressMessage('Processing manual content...');
@@ -506,11 +628,15 @@ export function WebsiteAnalysisPage() {
 
       {/* Input Mode Selection */}
       <div className="glass-card p-6">
-        <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'url' | 'manual')}>
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+        <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'url' | 'manual' | 'social')}>
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="url" className="flex items-center gap-2">
               <Globe className="h-4 w-4" />
               URL Scraping
+            </TabsTrigger>
+            <TabsTrigger value="social" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Social Media
             </TabsTrigger>
             <TabsTrigger value="manual" className="flex items-center gap-2">
               <FileCode className="h-4 w-4" />
@@ -541,8 +667,200 @@ export function WebsiteAnalysisPage() {
             </div>
             <p className="text-xs text-muted-foreground mt-3">
               <Info className="h-3 w-3 inline mr-1" />
-              Note: Some sites (Instagram, Facebook, Twitter) may not be supported. Use Manual Content for those.
+              Note: Some sites (Instagram, Facebook, Twitter) may not be supported. Use Social Media tab for those.
             </p>
+          </TabsContent>
+
+          <TabsContent value="social" className="mt-0 space-y-6">
+            {/* Platform Selection */}
+            <div className="grid grid-cols-7 gap-2">
+              {(Object.keys(socialPlatformConfig) as SocialPlatform[]).map((platform) => {
+                const config = socialPlatformConfig[platform];
+                const isSelected = socialPost.platform === platform;
+                return (
+                  <button
+                    key={platform}
+                    onClick={() => setSocialPost({ ...socialPost, platform, postType: config.postTypes[0] })}
+                    className={cn(
+                      'flex flex-col items-center gap-1 p-3 rounded-lg border transition-all',
+                      isSelected 
+                        ? 'border-primary bg-primary/10 text-primary' 
+                        : 'border-border hover:border-primary/50 hover:bg-muted'
+                    )}
+                  >
+                    <span className="text-xl">{config.icon}</span>
+                    <span className="text-xs font-medium">{config.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Post Type & Date */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Post Type</Label>
+                <Select 
+                  value={socialPost.postType} 
+                  onValueChange={(v) => setSocialPost({ ...socialPost, postType: v })}
+                >
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {socialPlatformConfig[socialPost.platform].postTypes.map((type) => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Post Date (optional)</Label>
+                <Input 
+                  type="date" 
+                  value={socialPost.postDate}
+                  onChange={(e) => setSocialPost({ ...socialPost, postDate: e.target.value })}
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+
+            {/* Caption */}
+            <div>
+              <Label className="text-sm font-medium">Caption / Post Text *</Label>
+              <Textarea 
+                placeholder={`Enter your ${socialPlatformConfig[socialPost.platform].label} post caption or text content...`}
+                value={socialPost.caption}
+                onChange={(e) => setSocialPost({ ...socialPost, caption: e.target.value })}
+                className="mt-1.5 min-h-[120px]"
+              />
+            </div>
+
+            {/* Hashtags & Mentions */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Hashtags</Label>
+                <Input 
+                  placeholder="#marketing #socialmedia #brand"
+                  value={socialPost.hashtags}
+                  onChange={(e) => setSocialPost({ ...socialPost, hashtags: e.target.value })}
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Mentions</Label>
+                <Input 
+                  placeholder="@user1 @brand @influencer"
+                  value={socialPost.mentions}
+                  onChange={(e) => setSocialPost({ ...socialPost, mentions: e.target.value })}
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+
+            {/* Engagement Metrics */}
+            <div>
+              <Label className="text-sm font-medium text-muted-foreground mb-2 block">Engagement Metrics (optional - for comparative analysis)</Label>
+              <div className="grid grid-cols-5 gap-3">
+                <div>
+                  <Label className="text-xs">Likes</Label>
+                  <Input 
+                    type="number" 
+                    placeholder="0"
+                    value={socialPost.likes}
+                    onChange={(e) => setSocialPost({ ...socialPost, likes: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Comments</Label>
+                  <Input 
+                    type="number" 
+                    placeholder="0"
+                    value={socialPost.comments}
+                    onChange={(e) => setSocialPost({ ...socialPost, comments: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Shares</Label>
+                  <Input 
+                    type="number" 
+                    placeholder="0"
+                    value={socialPost.shares}
+                    onChange={(e) => setSocialPost({ ...socialPost, shares: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Views</Label>
+                  <Input 
+                    type="number" 
+                    placeholder="0"
+                    value={socialPost.views}
+                    onChange={(e) => setSocialPost({ ...socialPost, views: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Eng. Rate %</Label>
+                  <Input 
+                    type="text" 
+                    placeholder="3.5%"
+                    value={socialPost.engagementRate}
+                    onChange={(e) => setSocialPost({ ...socialPost, engagementRate: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Additional Context */}
+            <div>
+              <Label className="text-sm font-medium">Additional Context (optional)</Label>
+              <Textarea 
+                placeholder="Add any additional context like: target audience, campaign goals, competitor info, past performance data..."
+                value={socialPost.additionalContext}
+                onChange={(e) => setSocialPost({ ...socialPost, additionalContext: e.target.value })}
+                className="mt-1.5 min-h-[80px]"
+              />
+            </div>
+
+            {/* Batch Posts */}
+            {batchPosts.length > 0 && (
+              <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                <Label className="text-sm font-medium mb-2 block">Batch Posts ({batchPosts.length})</Label>
+                <div className="flex flex-wrap gap-2">
+                  {batchPosts.map((post, index) => (
+                    <div key={index} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background border border-border text-sm">
+                      <span>{socialPlatformConfig[post.platform].icon}</span>
+                      <span className="max-w-[150px] truncate">{post.caption.slice(0, 30)}...</span>
+                      <button onClick={() => removeBatchPost(index)} className="text-muted-foreground hover:text-destructive">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={addBatchPost} disabled={!socialPost.caption.trim()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add to Batch
+              </Button>
+              <Button 
+                onClick={analyzeWebsite} 
+                disabled={isAnalyzing || (!socialPost.caption.trim() && batchPosts.length === 0)} 
+                size="lg"
+              >
+                {isAnalyzing ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing...</>
+                ) : (
+                  <><Search className="h-4 w-4 mr-2" />Analyze {batchPosts.length > 0 ? `${batchPosts.length} Posts` : 'Post'}</>
+                )}
+              </Button>
+            </div>
           </TabsContent>
 
           <TabsContent value="manual" className="mt-0 space-y-4">
@@ -550,7 +868,7 @@ export function WebsiteAnalysisPage() {
               <Label htmlFor="source" className="text-sm font-medium">Source Name (optional)</Label>
               <Input 
                 id="source"
-                placeholder="e.g., Instagram Post, Facebook Page, Twitter Profile" 
+                placeholder="e.g., Blog Post, Newsletter, Marketing Copy" 
                 value={contentSource} 
                 onChange={(e) => setContentSource(e.target.value)} 
                 className="mt-1.5"
@@ -565,7 +883,6 @@ export function WebsiteAnalysisPage() {
 You can:
 • Copy-paste the visible text from any webpage
 • Copy the HTML source code (View Source)
-• Paste social media post content
 • Paste any text content for analysis" 
                 value={manualContent} 
                 onChange={(e) => setManualContent(e.target.value)} 
