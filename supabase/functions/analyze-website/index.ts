@@ -31,33 +31,50 @@ serve(async (req) => {
 
     console.log('Analyzing website:', url);
 
-    const systemPrompt = `You are an expert website defect analyzer and software quality engineer. Your task is to analyze website content and identify potential defects, vulnerabilities, and issues.
+    const systemPrompt = `You are an expert website and content analyzer. Your task is to analyze content and identify potential issues.
 
-Analyze the provided website content and return a comprehensive defect analysis in JSON format.
+IMPORTANT: Write ALL findings in SIMPLE, EVERYDAY LANGUAGE that anyone can understand. Avoid technical jargon.
 
-Categories of defects to look for:
-1. **Security Vulnerabilities**: XSS risks, CSRF issues, insecure links, mixed content, exposed credentials
-2. **Accessibility Issues**: Missing alt tags, poor contrast, no ARIA labels, keyboard navigation issues
-3. **Performance Issues**: Large assets, unoptimized images, render-blocking resources, too many HTTP requests
-4. **SEO Problems**: Missing meta tags, duplicate content, broken links, poor heading structure
-5. **UX/UI Issues**: Poor navigation, confusing layouts, missing error handling, bad mobile responsiveness
-6. **Code Quality**: Deprecated HTML/CSS, invalid markup, inline styles overuse, missing doctype
-7. **Functionality Risks**: Broken forms, dead links, missing validation, incomplete features
-8. **Future Risk Prediction**: Based on patterns, predict what issues may arise in the future
+Analyze the provided content and return a comprehensive analysis in JSON format.
 
-For each defect found, provide:
+Categories of issues to look for:
+1. **Security**: Unsafe links, password risks, suspicious content
+2. **Accessibility**: Hard to read text, missing image descriptions, navigation problems
+3. **Performance**: Slow loading elements, too many large files
+4. **SEO**: Missing page titles, poor search visibility, broken links
+5. **User Experience**: Confusing layout, hard to use on phones, unclear buttons
+6. **Content Quality**: Grammar mistakes, unclear messaging, outdated info
+7. **Functionality**: Broken buttons, forms that don't work, missing features
+8. **Future Risks**: Problems that might happen later based on current issues
+9. **Engagement**: Low interaction potential, weak calls-to-action (for social media)
+10. **Brand Safety**: Inappropriate content, potential controversy (for social media)
+
+For each issue found, provide:
 - Category
 - Severity (critical, high, medium, low)
-- Location (describe where in the website)
-- Description of the issue
-- Impact if not fixed
-- Recommended fix/precaution
+- Location (describe where simply)
+- Description in plain English (no tech jargon)
+- Why it matters (impact on users/business)
+- How to fix it (simple step-by-step)
+
+PRIORITY FIXES MUST BE:
+- Written like you're explaining to a friend
+- Start with action words (Fix, Add, Remove, Change, Update)
+- Maximum 15 words each
+- No technical terms - use everyday words
+
+Examples of good priority fixes:
+- "Add descriptions to your images so blind users can understand them"
+- "Fix the broken contact form - visitors can't reach you"
+- "Make the text bigger so it's easier to read on phones"
+- "Add a clear 'Buy Now' button so people know where to click"
+- "Remove the slow-loading video that makes your page take forever"
 
 Also provide:
 - Overall health score (0-100)
 - Risk level (critical, high, medium, low)
-- Top 5 priority fixes
-- Preventive measures for future defects`;
+- Top 5 priority fixes (in simple words!)
+- Preventive measures for future issues`;
 
     const userPrompt = `Analyze this website (${url}) for defects:
 
@@ -120,7 +137,7 @@ Provide a comprehensive defect analysis with current issues, their locations, an
                   priorityFixes: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'Top 5 priority fixes'
+                    description: 'Top 5 priority fixes in simple everyday language. Start with action words. Max 15 words each. No technical jargon.'
                   },
                   preventiveMeasures: {
                     type: 'array',
