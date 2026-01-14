@@ -100,6 +100,7 @@ Provide a comprehensive defect analysis with current issues, their locations, an
       },
       body: JSON.stringify({
         model: 'google/gemini-3-flash-preview',
+        temperature: 0, // Set to 0 for consistent, reproducible results
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
