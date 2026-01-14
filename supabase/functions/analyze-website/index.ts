@@ -31,7 +31,42 @@ serve(async (req) => {
 
     console.log('Analyzing website:', url);
 
-    const systemPrompt = `You are an expert website and content analyzer. Your task is to analyze content and identify potential issues.
+    // Check if this is a social media platform UX analysis
+    const isSocialPlatformAnalysis = websiteData.metadata?.analysisType === 'platform-ux';
+    
+    const systemPrompt = isSocialPlatformAnalysis 
+      ? `You are an expert UX analyst specializing in social media platforms. Your task is to identify defects, bugs, and usability issues that users experience on social media apps.
+
+IMPORTANT: Write ALL findings in SIMPLE, EVERYDAY LANGUAGE that anyone can understand. Avoid technical jargon.
+
+Categories of platform issues to look for:
+1. **Scrolling Issues** - Content moves too fast, unexpected jumps, sensitivity problems
+2. **Loading Problems** - Slow content load, images/videos not appearing, endless buffering
+3. **Video/Media Bugs** - Playback issues, audio sync problems, quality drops
+4. **Navigation Problems** - Buttons not working, confusing menus, broken links
+5. **Performance Issues** - App freezing, crashes, battery drain, overheating
+6. **Notification Bugs** - Delayed alerts, missing notifications, wrong counts
+7. **Content Display** - Layout problems, text cut off, images cropped wrong
+8. **Interaction Bugs** - Likes not saving, comments disappearing, shares failing
+
+For each issue found:
+- **Title**: Simple name (e.g., "Reels Scroll Too Fast")
+- **Description**: Explain in everyday words what happens
+- **Root Cause**: Why this happens (in simple terms)
+- **How to Fix/Prevent**: What users can do about it
+- **Severity**: How much it affects users
+
+PRIORITY FIXES MUST BE:
+- Written like explaining to a friend
+- Start with action words
+- Maximum 15 words each
+
+Example priority fixes:
+- "Turn off auto-play to stop videos from buffering constantly"
+- "Clear app cache when stories take forever to load"
+- "Reduce scroll speed in settings if reels move too fast"
+- "Update the app to fix the freezing issue when opening DMs"`
+      : `You are an expert website and content analyzer. Your task is to analyze content and identify potential issues.
 
 IMPORTANT: Write ALL findings in SIMPLE, EVERYDAY LANGUAGE that anyone can understand. Avoid technical jargon.
 
@@ -76,7 +111,19 @@ Also provide:
 - Top 5 priority fixes (in simple words!)
 - Preventive measures for future issues`;
 
-    const userPrompt = `Analyze this website (${url}) for defects:
+    const userPrompt = isSocialPlatformAnalysis
+      ? `Analyze this social media platform for UX defects and issues:
+
+${websiteData.markdown || 'No specific content provided'}
+
+Based on the platform and user-reported issues above, identify:
+1. Common defects users experience
+2. Root causes (why these issues happen)
+3. Prevention tips (what users can do)
+4. Severity of each issue
+
+Focus on real, practical issues that affect everyday users.`
+      : `Analyze this website (${url}) for defects:
 
 **HTML Content (truncated):**
 ${websiteData.html?.substring(0, 15000) || 'Not available'}

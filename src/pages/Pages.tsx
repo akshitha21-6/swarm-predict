@@ -367,6 +367,8 @@ interface AnalysisResult {
 
 type SocialPlatform = 'instagram' | 'snapchat' | 'tiktok' | 'twitter' | 'facebook' | 'linkedin' | 'youtube';
 
+type SocialAnalysisMode = 'platform-url' | 'post-content';
+
 interface SocialMediaPost {
   platform: SocialPlatform;
   postType: string;
@@ -381,6 +383,56 @@ interface SocialMediaPost {
   postDate: string;
   additionalContext: string;
 }
+
+interface PlatformUXIssue {
+  category: string;
+  examples: string[];
+}
+
+const platformUXIssues: Record<SocialPlatform, PlatformUXIssue[]> = {
+  instagram: [
+    { category: 'Scrolling Issues', examples: ['Reels scroll too fast', 'Feed jumps back to top', 'Stories auto-advance too quickly'] },
+    { category: 'Loading Problems', examples: ['Images load slowly', 'Reels buffer constantly', 'Stories fail to load'] },
+    { category: 'Navigation Issues', examples: ['Explore tab unresponsive', 'DMs slow to open', 'Profile takes forever'] },
+    { category: 'Video Playback', examples: ['Audio desync', 'Video quality drops', 'Autoplay not working'] },
+  ],
+  snapchat: [
+    { category: 'Camera Issues', examples: ['Filters lag', 'Camera freezes', 'Lens effects delay'] },
+    { category: 'Story Problems', examples: ['Stories won\'t upload', 'Views not updating', 'Story order jumbled'] },
+    { category: 'Chat Issues', examples: ['Messages not sending', 'Snaps stuck on pending', 'Bitmoji not loading'] },
+    { category: 'Map Features', examples: ['Location inaccurate', 'Map loads slowly', 'Friends not showing'] },
+  ],
+  tiktok: [
+    { category: 'For You Page Issues', examples: ['Videos repeat too often', 'Scroll sensitivity too high', 'Content not personalized'] },
+    { category: 'Video Problems', examples: ['Videos won\'t play', 'Sound cuts out', 'Captions disappear'] },
+    { category: 'Upload Issues', examples: ['Videos fail to post', 'Drafts deleted', 'Effects not applying'] },
+    { category: 'Live Stream Issues', examples: ['Stream buffering', 'Comments lag', 'Gifts not sending'] },
+  ],
+  twitter: [
+    { category: 'Timeline Problems', examples: ['Tweets not loading', 'Timeline jumps around', 'Missing tweets from follows'] },
+    { category: 'Media Issues', examples: ['Images won\'t expand', 'Videos auto-muted', 'GIFs not playing'] },
+    { category: 'Notification Issues', examples: ['Delayed notifications', 'Missing mentions', 'DMs not alerting'] },
+    { category: 'Search Problems', examples: ['Search results outdated', 'Hashtags not working', 'Trends inaccurate'] },
+  ],
+  facebook: [
+    { category: 'News Feed Issues', examples: ['Posts out of order', 'Feed refreshes unexpectedly', 'Same posts repeated'] },
+    { category: 'Video Problems', examples: ['Reels buffer constantly', 'Videos auto-play loudly', 'Live streams lag'] },
+    { category: 'Messenger Issues', examples: ['Messages delayed', 'Calls drop frequently', 'Reactions slow'] },
+    { category: 'Group Problems', examples: ['Posts not appearing', 'Notifications overwhelming', 'Members list wrong'] },
+  ],
+  linkedin: [
+    { category: 'Feed Issues', examples: ['Posts load slowly', 'Engagement counts wrong', 'Old content shown'] },
+    { category: 'Connection Problems', examples: ['Invites pending forever', 'Profile views inaccurate', 'Messages delayed'] },
+    { category: 'Job Search Issues', examples: ['Filters don\'t work', 'Applications fail', 'Saved jobs disappear'] },
+    { category: 'Profile Problems', examples: ['Edits not saving', 'Skills section buggy', 'Endorsements not showing'] },
+  ],
+  youtube: [
+    { category: 'Playback Issues', examples: ['Videos buffer constantly', 'Quality changes randomly', 'Subtitles out of sync'] },
+    { category: 'Shorts Problems', examples: ['Scroll too sensitive', 'Videos loop incorrectly', 'Comments not loading'] },
+    { category: 'Subscription Issues', examples: ['Missing uploads from subscriptions', 'Notifications not working', 'Watch later not saving'] },
+    { category: 'Comment Problems', examples: ['Comments not posting', 'Reply threads broken', 'Likes not registering'] },
+  ],
+};
 
 const socialPlatformConfig: Record<SocialPlatform, { label: string; icon: string; color: string; postTypes: string[] }> = {
   instagram: { label: 'Instagram', icon: '📸', color: 'from-pink-500 to-purple-500', postTypes: ['Feed Post', 'Reel', 'Story', 'IGTV', 'Carousel'] },
@@ -455,6 +507,10 @@ export function WebsiteAnalysisPage() {
   const [activeTab, setActiveTab] = useState<'current' | 'future' | 'prevention'>('current');
   const [socialPost, setSocialPost] = useState<SocialMediaPost>(emptySocialPost);
   const [batchPosts, setBatchPosts] = useState<SocialMediaPost[]>([]);
+  const [socialAnalysisMode, setSocialAnalysisMode] = useState<SocialAnalysisMode>('platform-url');
+  const [socialPlatformUrl, setSocialPlatformUrl] = useState('');
+  const [selectedPlatformForUrl, setSelectedPlatformForUrl] = useState<SocialPlatform>('instagram');
+  const [userExperienceIssues, setUserExperienceIssues] = useState<string>('');
 
   const formatSocialPostForAnalysis = (post: SocialMediaPost): string => {
     const config = socialPlatformConfig[post.platform];
@@ -492,6 +548,45 @@ Please analyze this social media content for:
 `.trim();
   };
 
+  const formatPlatformUrlForAnalysis = (): string => {
+    const config = socialPlatformConfig[selectedPlatformForUrl];
+    const knownIssues = platformUXIssues[selectedPlatformForUrl];
+    
+    return `
+=== ${config.label.toUpperCase()} PLATFORM UX/DEFECT ANALYSIS ===
+
+PLATFORM: ${config.label}
+URL: ${socialPlatformUrl}
+
+--- USER EXPERIENCE ISSUES TO ANALYZE ---
+This is a ${config.label} platform analysis. Analyze the platform for common UX defects and issues that users experience.
+
+KNOWN COMMON ISSUES ON ${config.label.toUpperCase()}:
+${knownIssues.map(issue => `
+${issue.category}:
+${issue.examples.map(ex => `  • ${ex}`).join('\n')}`).join('\n')}
+
+--- USER REPORTED ISSUES ---
+${userExperienceIssues || 'No specific issues reported. Analyze for general platform defects.'}
+
+Please analyze this social media platform for:
+1. SCROLLING DEFECTS - Issues like content scrolling too fast, unexpected jumps, sensitivity problems
+2. LOADING PROBLEMS - Slow content load, buffering, images/videos not appearing
+3. NAVIGATION BUGS - Unresponsive buttons, broken links, confusing UI flows
+4. VIDEO/MEDIA ISSUES - Playback problems, audio sync, quality degradation
+5. PERFORMANCE PROBLEMS - App freezing, crashes, memory issues, battery drain
+6. NOTIFICATION BUGS - Delayed alerts, missing notifications, incorrect counts
+7. CONTENT DISPLAY ISSUES - Layout problems, text cut off, image cropping
+8. INTERACTION BUGS - Likes/comments not registering, shares failing
+
+For each defect found:
+- Describe the issue in simple everyday language
+- Explain the ROOT CAUSE (why this happens technically)
+- Provide PREVENTION steps (how users can avoid or fix it)
+- Rate severity based on user impact
+`.trim();
+  };
+
   const addBatchPost = () => {
     if (socialPost.caption.trim()) {
       setBatchPosts([...batchPosts, { ...socialPost }]);
@@ -506,7 +601,10 @@ Please analyze this social media content for:
   const analyzeWebsite = async () => {
     if (inputMode === 'url' && !url) return;
     if (inputMode === 'manual' && !manualContent.trim()) return;
-    if (inputMode === 'social' && !socialPost.caption.trim() && batchPosts.length === 0) return;
+    if (inputMode === 'social') {
+      if (socialAnalysisMode === 'platform-url' && !socialPlatformUrl.trim()) return;
+      if (socialAnalysisMode === 'post-content' && !socialPost.caption.trim() && batchPosts.length === 0) return;
+    }
     
     setIsAnalyzing(true);
     setProgress(0);
@@ -536,26 +634,49 @@ Please analyze this social media content for:
         
         websiteData = scrapeData.data;
       } else if (inputMode === 'social') {
-        // Social media content mode
+        // Social media analysis mode
         setProgressMessage('Processing social media content...');
         setProgress(20);
         
-        const postsToAnalyze = batchPosts.length > 0 ? batchPosts : [socialPost];
-        const formattedContent = postsToAnalyze.map(formatSocialPostForAnalysis).join('\n\n---\n\n');
-        const platformLabel = socialPlatformConfig[socialPost.platform].label;
-        sourceUrl = `${platformLabel} Analysis`;
-        
-        websiteData = {
-          markdown: formattedContent,
-          html: null,
-          links: [],
-          metadata: { 
-            title: `${platformLabel} Content Analysis`, 
-            sourceURL: sourceUrl,
-            platform: socialPost.platform,
-            isSocialMedia: true
-          }
-        };
+        if (socialAnalysisMode === 'platform-url') {
+          // Platform URL analysis for UX defects
+          const platformLabel = socialPlatformConfig[selectedPlatformForUrl].label;
+          sourceUrl = socialPlatformUrl || `${platformLabel} Platform`;
+          
+          const formattedContent = formatPlatformUrlForAnalysis();
+          
+          websiteData = {
+            markdown: formattedContent,
+            html: null,
+            links: [],
+            metadata: { 
+              title: `${platformLabel} Platform UX Analysis`, 
+              sourceURL: sourceUrl,
+              platform: selectedPlatformForUrl,
+              isSocialMedia: true,
+              analysisType: 'platform-ux'
+            }
+          };
+        } else {
+          // Post content analysis
+          const postsToAnalyze = batchPosts.length > 0 ? batchPosts : [socialPost];
+          const formattedContent = postsToAnalyze.map(formatSocialPostForAnalysis).join('\n\n---\n\n');
+          const platformLabel = socialPlatformConfig[socialPost.platform].label;
+          sourceUrl = `${platformLabel} Analysis`;
+          
+          websiteData = {
+            markdown: formattedContent,
+            html: null,
+            links: [],
+            metadata: { 
+              title: `${platformLabel} Content Analysis`, 
+              sourceURL: sourceUrl,
+              platform: socialPost.platform,
+              isSocialMedia: true,
+              analysisType: 'post-content'
+            }
+          };
+        }
       } else {
         // Manual content mode
         setProgressMessage('Processing manual content...');
@@ -672,195 +793,335 @@ Please analyze this social media content for:
           </TabsContent>
 
           <TabsContent value="social" className="mt-0 space-y-6">
-            {/* Platform Selection */}
-            <div className="grid grid-cols-7 gap-2">
-              {(Object.keys(socialPlatformConfig) as SocialPlatform[]).map((platform) => {
-                const config = socialPlatformConfig[platform];
-                const isSelected = socialPost.platform === platform;
-                return (
-                  <button
-                    key={platform}
-                    onClick={() => setSocialPost({ ...socialPost, platform, postType: config.postTypes[0] })}
-                    className={cn(
-                      'flex flex-col items-center gap-1 p-3 rounded-lg border transition-all',
-                      isSelected 
-                        ? 'border-primary bg-primary/10 text-primary' 
-                        : 'border-border hover:border-primary/50 hover:bg-muted'
-                    )}
-                  >
-                    <span className="text-xl">{config.icon}</span>
-                    <span className="text-xs font-medium">{config.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Post Type & Date */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-sm font-medium">Post Type</Label>
-                <Select 
-                  value={socialPost.postType} 
-                  onValueChange={(v) => setSocialPost({ ...socialPost, postType: v })}
-                >
-                  <SelectTrigger className="mt-1.5">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {socialPlatformConfig[socialPost.platform].postTypes.map((type) => (
-                      <SelectItem key={type} value={type}>{type}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-sm font-medium">Post Date (optional)</Label>
-                <Input 
-                  type="date" 
-                  value={socialPost.postDate}
-                  onChange={(e) => setSocialPost({ ...socialPost, postDate: e.target.value })}
-                  className="mt-1.5"
-                />
-              </div>
-            </div>
-
-            {/* Caption */}
-            <div>
-              <Label className="text-sm font-medium">Caption / Post Text *</Label>
-              <Textarea 
-                placeholder={`Enter your ${socialPlatformConfig[socialPost.platform].label} post caption or text content...`}
-                value={socialPost.caption}
-                onChange={(e) => setSocialPost({ ...socialPost, caption: e.target.value })}
-                className="mt-1.5 min-h-[120px]"
-              />
-            </div>
-
-            {/* Hashtags & Mentions */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-sm font-medium">Hashtags</Label>
-                <Input 
-                  placeholder="#marketing #socialmedia #brand"
-                  value={socialPost.hashtags}
-                  onChange={(e) => setSocialPost({ ...socialPost, hashtags: e.target.value })}
-                  className="mt-1.5"
-                />
-              </div>
-              <div>
-                <Label className="text-sm font-medium">Mentions</Label>
-                <Input 
-                  placeholder="@user1 @brand @influencer"
-                  value={socialPost.mentions}
-                  onChange={(e) => setSocialPost({ ...socialPost, mentions: e.target.value })}
-                  className="mt-1.5"
-                />
-              </div>
-            </div>
-
-            {/* Engagement Metrics */}
-            <div>
-              <Label className="text-sm font-medium text-muted-foreground mb-2 block">Engagement Metrics (optional - for comparative analysis)</Label>
-              <div className="grid grid-cols-5 gap-3">
-                <div>
-                  <Label className="text-xs">Likes</Label>
-                  <Input 
-                    type="number" 
-                    placeholder="0"
-                    value={socialPost.likes}
-                    onChange={(e) => setSocialPost({ ...socialPost, likes: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Comments</Label>
-                  <Input 
-                    type="number" 
-                    placeholder="0"
-                    value={socialPost.comments}
-                    onChange={(e) => setSocialPost({ ...socialPost, comments: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Shares</Label>
-                  <Input 
-                    type="number" 
-                    placeholder="0"
-                    value={socialPost.shares}
-                    onChange={(e) => setSocialPost({ ...socialPost, shares: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Views</Label>
-                  <Input 
-                    type="number" 
-                    placeholder="0"
-                    value={socialPost.views}
-                    onChange={(e) => setSocialPost({ ...socialPost, views: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Eng. Rate %</Label>
-                  <Input 
-                    type="text" 
-                    placeholder="3.5%"
-                    value={socialPost.engagementRate}
-                    onChange={(e) => setSocialPost({ ...socialPost, engagementRate: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Additional Context */}
-            <div>
-              <Label className="text-sm font-medium">Additional Context (optional)</Label>
-              <Textarea 
-                placeholder="Add any additional context like: target audience, campaign goals, competitor info, past performance data..."
-                value={socialPost.additionalContext}
-                onChange={(e) => setSocialPost({ ...socialPost, additionalContext: e.target.value })}
-                className="mt-1.5 min-h-[80px]"
-              />
-            </div>
-
-            {/* Batch Posts */}
-            {batchPosts.length > 0 && (
-              <div className="p-4 rounded-lg bg-muted/50 border border-border">
-                <Label className="text-sm font-medium mb-2 block">Batch Posts ({batchPosts.length})</Label>
-                <div className="flex flex-wrap gap-2">
-                  {batchPosts.map((post, index) => (
-                    <div key={index} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background border border-border text-sm">
-                      <span>{socialPlatformConfig[post.platform].icon}</span>
-                      <span className="max-w-[150px] truncate">{post.caption.slice(0, 30)}...</span>
-                      <button onClick={() => removeBatchPost(index)} className="text-muted-foreground hover:text-destructive">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={addBatchPost} disabled={!socialPost.caption.trim()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add to Batch
-              </Button>
-              <Button 
-                onClick={analyzeWebsite} 
-                disabled={isAnalyzing || (!socialPost.caption.trim() && batchPosts.length === 0)} 
-                size="lg"
-              >
-                {isAnalyzing ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing...</>
-                ) : (
-                  <><Search className="h-4 w-4 mr-2" />Analyze {batchPosts.length > 0 ? `${batchPosts.length} Posts` : 'Post'}</>
+            {/* Analysis Mode Toggle */}
+            <div className="flex gap-2 p-1 bg-muted rounded-lg w-fit">
+              <button
+                onClick={() => setSocialAnalysisMode('platform-url')}
+                className={cn(
+                  'px-4 py-2 rounded-md text-sm font-medium transition-all',
+                  socialAnalysisMode === 'platform-url'
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
-              </Button>
+              >
+                🔍 Platform URL Analysis
+              </button>
+              <button
+                onClick={() => setSocialAnalysisMode('post-content')}
+                className={cn(
+                  'px-4 py-2 rounded-md text-sm font-medium transition-all',
+                  socialAnalysisMode === 'post-content'
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                📝 Post Content Analysis
+              </button>
             </div>
+
+            {socialAnalysisMode === 'platform-url' ? (
+              <>
+                {/* Platform URL Analysis Mode */}
+                <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                  <p className="text-sm text-muted-foreground">
+                    <strong className="text-foreground">Platform UX Analysis:</strong> Enter a social media platform URL to find defects like slow loading, scrolling issues, video problems, and more.
+                  </p>
+                </div>
+
+                {/* Platform Selection */}
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">Select Platform</Label>
+                  <div className="grid grid-cols-7 gap-2">
+                    {(Object.keys(socialPlatformConfig) as SocialPlatform[]).map((platform) => {
+                      const config = socialPlatformConfig[platform];
+                      const isSelected = selectedPlatformForUrl === platform;
+                      return (
+                        <button
+                          key={platform}
+                          onClick={() => setSelectedPlatformForUrl(platform)}
+                          className={cn(
+                            'flex flex-col items-center gap-1 p-3 rounded-lg border transition-all',
+                            isSelected 
+                              ? 'border-primary bg-primary/10 text-primary' 
+                              : 'border-border hover:border-primary/50 hover:bg-muted'
+                          )}
+                        >
+                          <span className="text-xl">{config.icon}</span>
+                          <span className="text-xs font-medium">{config.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Platform URL Input */}
+                <div>
+                  <Label className="text-sm font-medium">Platform URL</Label>
+                  <div className="flex gap-4 mt-1.5">
+                    <div className="flex-1 relative">
+                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Input 
+                        type="url" 
+                        placeholder={`e.g., https://www.${selectedPlatformForUrl}.com`}
+                        value={socialPlatformUrl}
+                        onChange={(e) => setSocialPlatformUrl(e.target.value)}
+                        className="pl-10 h-12"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Known Issues for Selected Platform */}
+                <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                  <Label className="text-sm font-medium mb-3 block">
+                    Common {socialPlatformConfig[selectedPlatformForUrl].label} Issues We'll Check:
+                  </Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    {platformUXIssues[selectedPlatformForUrl].map((issue, idx) => (
+                      <div key={idx} className="text-sm">
+                        <span className="font-medium text-foreground">{issue.category}:</span>
+                        <ul className="mt-1 space-y-0.5">
+                          {issue.examples.slice(0, 2).map((ex, i) => (
+                            <li key={i} className="text-muted-foreground text-xs">• {ex}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* User Reported Issues */}
+                <div>
+                  <Label className="text-sm font-medium">Describe Issues You've Experienced (optional)</Label>
+                  <Textarea 
+                    placeholder={`Describe any specific issues you've noticed on ${socialPlatformConfig[selectedPlatformForUrl].label}...
+
+Examples:
+• "When I scroll reels, they sometimes skip or go too fast"
+• "Videos keep buffering even on good WiFi"
+• "The app freezes when I open DMs"
+• "Notifications are delayed by hours"`}
+                    value={userExperienceIssues}
+                    onChange={(e) => setUserExperienceIssues(e.target.value)}
+                    className="mt-1.5 min-h-[120px]"
+                  />
+                </div>
+
+                {/* Analyze Button */}
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={analyzeWebsite} 
+                    disabled={isAnalyzing || !socialPlatformUrl.trim()} 
+                    size="lg"
+                  >
+                    {isAnalyzing ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing...</>
+                    ) : (
+                      <><Search className="h-4 w-4 mr-2" />Analyze Platform</>
+                    )}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Post Content Analysis Mode */}
+                <div className="p-4 rounded-lg bg-accent/10 border border-accent/20">
+                  <p className="text-sm text-muted-foreground">
+                    <strong className="text-foreground">Post Analysis:</strong> Analyze your social media posts for content quality, engagement potential, and best practices.
+                  </p>
+                </div>
+
+                {/* Platform Selection */}
+                <div className="grid grid-cols-7 gap-2">
+                  {(Object.keys(socialPlatformConfig) as SocialPlatform[]).map((platform) => {
+                    const config = socialPlatformConfig[platform];
+                    const isSelected = socialPost.platform === platform;
+                    return (
+                      <button
+                        key={platform}
+                        onClick={() => setSocialPost({ ...socialPost, platform, postType: config.postTypes[0] })}
+                        className={cn(
+                          'flex flex-col items-center gap-1 p-3 rounded-lg border transition-all',
+                          isSelected 
+                            ? 'border-primary bg-primary/10 text-primary' 
+                            : 'border-border hover:border-primary/50 hover:bg-muted'
+                        )}
+                      >
+                        <span className="text-xl">{config.icon}</span>
+                        <span className="text-xs font-medium">{config.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Post Type & Date */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium">Post Type</Label>
+                    <Select 
+                      value={socialPost.postType} 
+                      onValueChange={(v) => setSocialPost({ ...socialPost, postType: v })}
+                    >
+                      <SelectTrigger className="mt-1.5">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {socialPlatformConfig[socialPost.platform].postTypes.map((type) => (
+                          <SelectItem key={type} value={type}>{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Post Date (optional)</Label>
+                    <Input 
+                      type="date" 
+                      value={socialPost.postDate}
+                      onChange={(e) => setSocialPost({ ...socialPost, postDate: e.target.value })}
+                      className="mt-1.5"
+                    />
+                  </div>
+                </div>
+
+                {/* Caption */}
+                <div>
+                  <Label className="text-sm font-medium">Caption / Post Text *</Label>
+                  <Textarea 
+                    placeholder={`Enter your ${socialPlatformConfig[socialPost.platform].label} post caption or text content...`}
+                    value={socialPost.caption}
+                    onChange={(e) => setSocialPost({ ...socialPost, caption: e.target.value })}
+                    className="mt-1.5 min-h-[120px]"
+                  />
+                </div>
+
+                {/* Hashtags & Mentions */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium">Hashtags</Label>
+                    <Input 
+                      placeholder="#marketing #socialmedia #brand"
+                      value={socialPost.hashtags}
+                      onChange={(e) => setSocialPost({ ...socialPost, hashtags: e.target.value })}
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Mentions</Label>
+                    <Input 
+                      placeholder="@user1 @brand @influencer"
+                      value={socialPost.mentions}
+                      onChange={(e) => setSocialPost({ ...socialPost, mentions: e.target.value })}
+                      className="mt-1.5"
+                    />
+                  </div>
+                </div>
+
+                {/* Engagement Metrics */}
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground mb-2 block">Engagement Metrics (optional)</Label>
+                  <div className="grid grid-cols-5 gap-3">
+                    <div>
+                      <Label className="text-xs">Likes</Label>
+                      <Input 
+                        type="number" 
+                        placeholder="0"
+                        value={socialPost.likes}
+                        onChange={(e) => setSocialPost({ ...socialPost, likes: e.target.value })}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Comments</Label>
+                      <Input 
+                        type="number" 
+                        placeholder="0"
+                        value={socialPost.comments}
+                        onChange={(e) => setSocialPost({ ...socialPost, comments: e.target.value })}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Shares</Label>
+                      <Input 
+                        type="number" 
+                        placeholder="0"
+                        value={socialPost.shares}
+                        onChange={(e) => setSocialPost({ ...socialPost, shares: e.target.value })}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Views</Label>
+                      <Input 
+                        type="number" 
+                        placeholder="0"
+                        value={socialPost.views}
+                        onChange={(e) => setSocialPost({ ...socialPost, views: e.target.value })}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Eng. Rate %</Label>
+                      <Input 
+                        type="text" 
+                        placeholder="3.5%"
+                        value={socialPost.engagementRate}
+                        onChange={(e) => setSocialPost({ ...socialPost, engagementRate: e.target.value })}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Context */}
+                <div>
+                  <Label className="text-sm font-medium">Additional Context (optional)</Label>
+                  <Textarea 
+                    placeholder="Add any additional context like: target audience, campaign goals, competitor info..."
+                    value={socialPost.additionalContext}
+                    onChange={(e) => setSocialPost({ ...socialPost, additionalContext: e.target.value })}
+                    className="mt-1.5 min-h-[80px]"
+                  />
+                </div>
+
+                {/* Batch Posts */}
+                {batchPosts.length > 0 && (
+                  <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                    <Label className="text-sm font-medium mb-2 block">Batch Posts ({batchPosts.length})</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {batchPosts.map((post, index) => (
+                        <div key={index} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background border border-border text-sm">
+                          <span>{socialPlatformConfig[post.platform].icon}</span>
+                          <span className="max-w-[150px] truncate">{post.caption.slice(0, 30)}...</span>
+                          <button onClick={() => removeBatchPost(index)} className="text-muted-foreground hover:text-destructive">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex justify-between">
+                  <Button variant="outline" onClick={addBatchPost} disabled={!socialPost.caption.trim()}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add to Batch
+                  </Button>
+                  <Button 
+                    onClick={analyzeWebsite} 
+                    disabled={isAnalyzing || (!socialPost.caption.trim() && batchPosts.length === 0)} 
+                    size="lg"
+                  >
+                    {isAnalyzing ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing...</>
+                    ) : (
+                      <><Search className="h-4 w-4 mr-2" />Analyze {batchPosts.length > 0 ? `${batchPosts.length} Posts` : 'Post'}</>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="manual" className="mt-0 space-y-4">
