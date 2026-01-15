@@ -17,6 +17,7 @@ export interface OptimizationResult { algorithm: 'PSO' | 'GA' | 'ACO' | 'Hybrid'
 // ==================== LAYOUT ====================
 interface NavItem { icon: React.ElementType; label: string; href: string; adminOnly?: boolean; }
 const navItems: NavItem[] = [
+  { icon: Brain, label: 'Analysis Hub', href: '/main' },
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
   { icon: Upload, label: 'Dataset Upload', href: '/dataset' },
   { icon: Layers, label: 'Feature Selection', href: '/features' },
@@ -26,10 +27,6 @@ const navItems: NavItem[] = [
   { icon: Globe, label: 'Website Analysis', href: '/website-analysis' },
   { icon: BarChart3, label: 'Metrics', href: '/metrics' },
   { icon: FileText, label: 'Reports', href: '/reports' },
-  { icon: GitBranch, label: 'Cross-Project', href: '/cross-project' },
-  { icon: RefreshCw, label: 'Incremental Learning', href: '/incremental' },
-  { icon: Workflow, label: 'DevOps', href: '/devops' },
-  { icon: Activity, label: 'Analytics', href: '/analytics' },
   { icon: Settings, label: 'Settings', href: '/settings' },
 ];
 
