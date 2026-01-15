@@ -7,6 +7,7 @@ import {
   OptimizationPage, TrainingPage, PredictionsPage, WebsiteAnalysisPage,
   MetricsPage, ReportsPage, SettingsPage, MainLayout
 } from '@/pages/Pages';
+import { MainAnalysisPage } from '@/pages/MainAnalysisPage';
 
 // ==================== ROUTES ====================
 const queryClient = new QueryClient();
@@ -21,6 +22,7 @@ function AppRoutes() {
       <Route path="/" element={<Index />} />
       <Route element={<AppLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/main" element={<MainAnalysisPage />} />
         <Route path="/dataset" element={<DatasetPage />} />
         <Route path="/features" element={<FeatureSelectionPage />} />
         <Route path="/optimization" element={<OptimizationPage />} />
@@ -35,7 +37,7 @@ function AppRoutes() {
         <Route path="/devops" element={<Dashboard />} />
         <Route path="/analytics" element={<Dashboard />} />
       </Route>
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/main" replace />} />
     </Routes>
   );
 }
