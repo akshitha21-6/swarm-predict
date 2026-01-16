@@ -287,38 +287,592 @@ export function OptimizationPage() {
 }
 
 // ==================== PREDICTIONS PAGE ====================
-interface PredictionResult { id: string; moduleName: string; result: 'defective' | 'non-defective'; probability: number; riskLevel: 'low' | 'medium' | 'high'; confidence: number; featureContributions: { feature: string; contribution: number; direction: 'positive' | 'negative' }[]; }
-const mockFeatureContributions = [{ feature: 'Cyclomatic Complexity', contribution: 0.28, direction: 'positive' as const }, { feature: 'Lines of Code', contribution: 0.22, direction: 'positive' as const }, { feature: 'Code Churn', contribution: 0.18, direction: 'positive' as const }, { feature: 'Comment Density', contribution: -0.15, direction: 'negative' as const }, { feature: 'Developer Experience', contribution: -0.12, direction: 'negative' as const }, { feature: 'Test Coverage', contribution: -0.05, direction: 'negative' as const }];
+interface PredictionResult { 
+  id: string; 
+  moduleName: string; 
+  result: 'defective' | 'non-defective'; 
+  probability: number; 
+  riskLevel: 'low' | 'medium' | 'high'; 
+  confidence: number; 
+  featureContributions: { feature: string; contribution: number; direction: 'positive' | 'negative' }[]; 
+}
+
+const mockFeatureContributions = [
+  { feature: 'Cyclomatic Complexity', contribution: 0.28, direction: 'positive' as const },
+  { feature: 'Lines of Code', contribution: 0.22, direction: 'positive' as const },
+  { feature: 'Code Churn', contribution: 0.18, direction: 'positive' as const },
+  { feature: 'Comment Density', contribution: -0.15, direction: 'negative' as const },
+  { feature: 'Developer Experience', contribution: -0.12, direction: 'negative' as const },
+  { feature: 'Test Coverage', contribution: -0.05, direction: 'negative' as const }
+];
+
+// Helper explanations for metrics
+const metricExplanations = {
+  loc: {
+    name: 'Lines of Code (LOC)',
+    simple: 'How many lines your code has',
+    example: 'A small function = 20-50 lines, A large file = 500+ lines',
+    impact: 'More lines = more chances for bugs'
+  },
+  cc: {
+    name: 'Cyclomatic Complexity',
+    simple: 'How many paths your code can take (if/else, loops, etc.)',
+    example: 'Simple function = 1-5, Complex function = 10+',
+    impact: 'Higher complexity = harder to test and more bugs'
+  },
+  commentDensity: {
+    name: 'Comment Density',
+    simple: 'How much of your code is explained with comments',
+    example: '0.25 means 25% of your code has comments',
+    impact: 'More comments = easier to understand and fix'
+  },
+  numFunctions: {
+    name: 'Number of Functions',
+    simple: 'How many functions/methods are in your code',
+    example: 'Well-organized = many small functions',
+    impact: 'Too few big functions = harder to test'
+  },
+  codeChurn: {
+    name: 'Code Churn',
+    simple: 'How often this code has been changed recently',
+    example: 'High churn = code changed many times this month',
+    impact: 'Frequently changed code = more likely to have new bugs'
+  }
+};
+
+// Risk level explanations
+const riskExplanations = {
+  low: {
+    emoji: '✅',
+    title: 'Low Risk - Good to Go!',
+    meaning: 'Your code looks healthy and well-structured.',
+    action: 'Keep up the good work! Continue following best practices.'
+  },
+  medium: {
+    emoji: '⚠️',
+    title: 'Medium Risk - Needs Attention',
+    meaning: 'Your code has some areas that could cause problems.',
+    action: 'Review the highlighted areas and consider refactoring before release.'
+  },
+  high: {
+    emoji: '🚨',
+    title: 'High Risk - Action Required!',
+    meaning: 'Your code has significant issues that are likely to cause bugs.',
+    action: 'Prioritize fixing these issues before deploying to production.'
+  }
+};
+
+// Contribution explanations
+const contributionExplanations: Record<string, string> = {
+  'Cyclomatic Complexity': 'Too many if/else or loops make code confusing',
+  'Lines of Code': 'Large files are harder to maintain and test',
+  'Code Churn': 'Frequently changed code often introduces new bugs',
+  'Comment Density': 'Good comments help others understand your code',
+  'Developer Experience': 'Experienced developers write more stable code',
+  'Test Coverage': 'More tests catch more bugs before users see them'
+};
 
 export function PredictionsPage() {
   const [activeTab, setActiveTab] = useState('single');
   const [isLoading, setIsLoading] = useState(false);
   const [singleInput, setSingleInput] = useState({ loc: '', cc: '', commentDensity: '', numFunctions: '', codeChurn: '' });
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
+  const [showGuide, setShowGuide] = useState(true);
+  const [hoveredMetric, setHoveredMetric] = useState<string | null>(null);
 
   const handleSinglePredict = async () => {
     setIsLoading(true);
     await new Promise((resolve) => setTimeout(resolve, 1500));
     const probability = Math.random();
-    setPrediction({ id: Date.now().toString(), moduleName: 'input_module.py', result: probability > 0.5 ? 'defective' : 'non-defective', probability, riskLevel: probability > 0.7 ? 'high' : probability > 0.4 ? 'medium' : 'low', confidence: 0.85 + Math.random() * 0.1, featureContributions: mockFeatureContributions });
+    setPrediction({ 
+      id: Date.now().toString(), 
+      moduleName: 'input_module.py', 
+      result: probability > 0.5 ? 'defective' : 'non-defective', 
+      probability, 
+      riskLevel: probability > 0.7 ? 'high' : probability > 0.4 ? 'medium' : 'low', 
+      confidence: 0.85 + Math.random() * 0.1, 
+      featureContributions: mockFeatureContributions 
+    });
     setIsLoading(false);
+    setShowGuide(false);
   };
 
-  const chartData = prediction?.featureContributions.map((f) => ({ feature: f.feature.length > 15 ? f.feature.slice(0, 15) + '...' : f.feature, contribution: Math.abs(f.contribution) * 100, direction: f.direction }));
+  const chartData = prediction?.featureContributions.map((f) => ({ 
+    feature: f.feature.length > 15 ? f.feature.slice(0, 15) + '...' : f.feature, 
+    fullFeature: f.feature,
+    contribution: Math.abs(f.contribution) * 100, 
+    direction: f.direction 
+  }));
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div><h1 className="text-3xl font-display font-bold">Defect Prediction</h1><p className="text-muted-foreground mt-1">Predict defects with explainable AI insights</p></div>
-      <Tabs value={activeTab} onValueChange={setActiveTab}><TabsList className="mb-6"><TabsTrigger value="single">Single Prediction</TabsTrigger><TabsTrigger value="batch">Batch Upload</TabsTrigger><TabsTrigger value="code">Code Analysis</TabsTrigger></TabsList>
+      {/* Header with Quick Guide Toggle */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-display font-bold flex items-center gap-3">
+            <Brain className="h-8 w-8 text-primary" />
+            Defect Prediction
+          </h1>
+          <p className="text-muted-foreground mt-1">Find bugs before they find you! Our AI analyzes your code and tells you where problems might hide.</p>
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={() => setShowGuide(!showGuide)}
+          className="flex items-center gap-2"
+        >
+          <Info className="h-4 w-4" />
+          {showGuide ? 'Hide Guide' : 'Show Guide'}
+        </Button>
+      </div>
+
+      {/* Beginner-Friendly Guide */}
+      {showGuide && (
+        <div className="glass-card p-6 border-l-4 border-l-primary bg-primary/5">
+          <h3 className="text-lg font-display font-semibold mb-4 flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            How This Works (Simple Explanation)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-primary font-semibold">
+                <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-sm">1</div>
+                Enter Your Code Info
+              </div>
+              <p className="text-sm text-muted-foreground pl-10">
+                Fill in simple numbers about your code - like how big it is and how complex it is.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-primary font-semibold">
+                <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-sm">2</div>
+                AI Analyzes It
+              </div>
+              <p className="text-sm text-muted-foreground pl-10">
+                Our smart AI compares your code to millions of other projects to find patterns that lead to bugs.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-primary font-semibold">
+                <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-sm">3</div>
+                Get Clear Results
+              </div>
+              <p className="text-sm text-muted-foreground pl-10">
+                See exactly what might cause problems and how to fix them - explained in plain English!
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="single" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Single Prediction
+          </TabsTrigger>
+          <TabsTrigger value="batch" className="flex items-center gap-2">
+            <Upload className="h-4 w-4" />
+            Batch Upload
+          </TabsTrigger>
+          <TabsTrigger value="code" className="flex items-center gap-2">
+            <FileCode className="h-4 w-4" />
+            Code Analysis
+          </TabsTrigger>
+        </TabsList>
+
         <TabsContent value="single" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="glass-card p-6"><h3 className="text-lg font-display font-semibold mb-6">Module Metrics</h3><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><label className="text-sm font-medium">Lines of Code</label><Input type="number" placeholder="e.g., 250" value={singleInput.loc} onChange={(e) => setSingleInput({ ...singleInput, loc: e.target.value })} /></div><div className="space-y-2"><label className="text-sm font-medium">Cyclomatic Complexity</label><Input type="number" placeholder="e.g., 15" value={singleInput.cc} onChange={(e) => setSingleInput({ ...singleInput, cc: e.target.value })} /></div><div className="space-y-2"><label className="text-sm font-medium">Comment Density</label><Input type="number" step="0.01" placeholder="e.g., 0.25" value={singleInput.commentDensity} onChange={(e) => setSingleInput({ ...singleInput, commentDensity: e.target.value })} /></div><div className="space-y-2"><label className="text-sm font-medium">Number of Functions</label><Input type="number" placeholder="e.g., 12" value={singleInput.numFunctions} onChange={(e) => setSingleInput({ ...singleInput, numFunctions: e.target.value })} /></div><div className="col-span-2 space-y-2"><label className="text-sm font-medium">Code Churn</label><Input type="number" placeholder="e.g., 45" value={singleInput.codeChurn} onChange={(e) => setSingleInput({ ...singleInput, codeChurn: e.target.value })} /></div></div><Button className="w-full mt-6" onClick={handleSinglePredict} disabled={isLoading}>{isLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing...</> : <><Brain className="h-4 w-4 mr-2" />Predict Defect</>}</Button></div>
-            <div className="glass-card p-6"><h3 className="text-lg font-display font-semibold mb-6">Prediction Result</h3>{prediction ? <div className="space-y-6"><div className={`p-6 rounded-xl text-center ${prediction.result === 'defective' ? 'bg-destructive/10 border border-destructive/30' : 'bg-success/10 border border-success/30'}`}><div className={`inline-flex p-4 rounded-full mb-4 ${prediction.result === 'defective' ? 'bg-destructive/20' : 'bg-success/20'}`}>{prediction.result === 'defective' ? <AlertTriangle className="h-8 w-8 text-destructive" /> : <Check className="h-8 w-8 text-success" />}</div><h4 className="text-2xl font-display font-bold capitalize mb-2">{prediction.result.replace('-', ' ')}</h4><p className="text-muted-foreground">{(prediction.probability * 100).toFixed(1)}% defect probability</p></div><div className="grid grid-cols-2 gap-4"><div className="p-4 rounded-lg bg-secondary/50"><p className="text-sm text-muted-foreground">Risk Level</p><p className={`text-xl font-bold capitalize ${prediction.riskLevel === 'high' ? 'text-destructive' : prediction.riskLevel === 'medium' ? 'text-warning' : 'text-success'}`}>{prediction.riskLevel}</p></div><div className="p-4 rounded-lg bg-secondary/50"><p className="text-sm text-muted-foreground">Confidence</p><p className="text-xl font-bold">{(prediction.confidence * 100).toFixed(1)}%</p></div></div></div> : <div className="flex flex-col items-center justify-center py-12 text-muted-foreground"><Brain className="h-12 w-12 mb-4 opacity-50" /><p>Enter metrics and click Predict</p></div>}</div>
+            {/* Input Section with Helpful Tooltips */}
+            <div className="glass-card p-6">
+              <h3 className="text-lg font-display font-semibold mb-2">📝 Enter Your Code Metrics</h3>
+              <p className="text-sm text-muted-foreground mb-6">Hover over any field to see what it means!</p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                {/* Lines of Code */}
+                <div 
+                  className="space-y-2 relative"
+                  onMouseEnter={() => setHoveredMetric('loc')}
+                  onMouseLeave={() => setHoveredMetric(null)}
+                >
+                  <label className="text-sm font-medium flex items-center gap-1">
+                    Lines of Code
+                    <Info className="h-3 w-3 text-muted-foreground" />
+                  </label>
+                  <Input 
+                    type="number" 
+                    placeholder="e.g., 250" 
+                    value={singleInput.loc} 
+                    onChange={(e) => setSingleInput({ ...singleInput, loc: e.target.value })} 
+                  />
+                  {hoveredMetric === 'loc' && (
+                    <div className="absolute z-10 top-full left-0 mt-1 p-3 bg-popover border rounded-lg shadow-lg text-xs w-64">
+                      <p className="font-semibold">{metricExplanations.loc.name}</p>
+                      <p className="text-muted-foreground mt-1">{metricExplanations.loc.simple}</p>
+                      <p className="text-primary mt-1">💡 {metricExplanations.loc.example}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Cyclomatic Complexity */}
+                <div 
+                  className="space-y-2 relative"
+                  onMouseEnter={() => setHoveredMetric('cc')}
+                  onMouseLeave={() => setHoveredMetric(null)}
+                >
+                  <label className="text-sm font-medium flex items-center gap-1">
+                    Cyclomatic Complexity
+                    <Info className="h-3 w-3 text-muted-foreground" />
+                  </label>
+                  <Input 
+                    type="number" 
+                    placeholder="e.g., 15" 
+                    value={singleInput.cc} 
+                    onChange={(e) => setSingleInput({ ...singleInput, cc: e.target.value })} 
+                  />
+                  {hoveredMetric === 'cc' && (
+                    <div className="absolute z-10 top-full left-0 mt-1 p-3 bg-popover border rounded-lg shadow-lg text-xs w-64">
+                      <p className="font-semibold">{metricExplanations.cc.name}</p>
+                      <p className="text-muted-foreground mt-1">{metricExplanations.cc.simple}</p>
+                      <p className="text-primary mt-1">💡 {metricExplanations.cc.example}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Comment Density */}
+                <div 
+                  className="space-y-2 relative"
+                  onMouseEnter={() => setHoveredMetric('commentDensity')}
+                  onMouseLeave={() => setHoveredMetric(null)}
+                >
+                  <label className="text-sm font-medium flex items-center gap-1">
+                    Comment Density
+                    <Info className="h-3 w-3 text-muted-foreground" />
+                  </label>
+                  <Input 
+                    type="number" 
+                    step="0.01" 
+                    placeholder="e.g., 0.25" 
+                    value={singleInput.commentDensity} 
+                    onChange={(e) => setSingleInput({ ...singleInput, commentDensity: e.target.value })} 
+                  />
+                  {hoveredMetric === 'commentDensity' && (
+                    <div className="absolute z-10 top-full left-0 mt-1 p-3 bg-popover border rounded-lg shadow-lg text-xs w-64">
+                      <p className="font-semibold">{metricExplanations.commentDensity.name}</p>
+                      <p className="text-muted-foreground mt-1">{metricExplanations.commentDensity.simple}</p>
+                      <p className="text-primary mt-1">💡 {metricExplanations.commentDensity.example}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Number of Functions */}
+                <div 
+                  className="space-y-2 relative"
+                  onMouseEnter={() => setHoveredMetric('numFunctions')}
+                  onMouseLeave={() => setHoveredMetric(null)}
+                >
+                  <label className="text-sm font-medium flex items-center gap-1">
+                    Number of Functions
+                    <Info className="h-3 w-3 text-muted-foreground" />
+                  </label>
+                  <Input 
+                    type="number" 
+                    placeholder="e.g., 12" 
+                    value={singleInput.numFunctions} 
+                    onChange={(e) => setSingleInput({ ...singleInput, numFunctions: e.target.value })} 
+                  />
+                  {hoveredMetric === 'numFunctions' && (
+                    <div className="absolute z-10 top-full left-0 mt-1 p-3 bg-popover border rounded-lg shadow-lg text-xs w-64">
+                      <p className="font-semibold">{metricExplanations.numFunctions.name}</p>
+                      <p className="text-muted-foreground mt-1">{metricExplanations.numFunctions.simple}</p>
+                      <p className="text-primary mt-1">💡 {metricExplanations.numFunctions.example}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Code Churn */}
+                <div 
+                  className="col-span-2 space-y-2 relative"
+                  onMouseEnter={() => setHoveredMetric('codeChurn')}
+                  onMouseLeave={() => setHoveredMetric(null)}
+                >
+                  <label className="text-sm font-medium flex items-center gap-1">
+                    Code Churn
+                    <Info className="h-3 w-3 text-muted-foreground" />
+                  </label>
+                  <Input 
+                    type="number" 
+                    placeholder="e.g., 45" 
+                    value={singleInput.codeChurn} 
+                    onChange={(e) => setSingleInput({ ...singleInput, codeChurn: e.target.value })} 
+                  />
+                  {hoveredMetric === 'codeChurn' && (
+                    <div className="absolute z-10 top-full left-0 mt-1 p-3 bg-popover border rounded-lg shadow-lg text-xs w-64">
+                      <p className="font-semibold">{metricExplanations.codeChurn.name}</p>
+                      <p className="text-muted-foreground mt-1">{metricExplanations.codeChurn.simple}</p>
+                      <p className="text-primary mt-1">💡 {metricExplanations.codeChurn.example}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <Button className="w-full mt-6" onClick={handleSinglePredict} disabled={isLoading} size="lg">
+                {isLoading ? (
+                  <><Loader2 className="h-5 w-5 mr-2 animate-spin" />Analyzing Your Code...</>
+                ) : (
+                  <><Brain className="h-5 w-5 mr-2" />🔍 Predict Defects Now</>
+                )}
+              </Button>
+
+              {/* Quick Tips */}
+              <div className="mt-4 p-3 rounded-lg bg-muted/50 text-xs">
+                <p className="font-medium mb-1">💡 Not sure about these numbers?</p>
+                <p className="text-muted-foreground">Use the "Code Analysis" tab to paste your actual code - we'll calculate these metrics for you!</p>
+              </div>
+            </div>
+
+            {/* Result Section - Enhanced */}
+            <div className="glass-card p-6">
+              <h3 className="text-lg font-display font-semibold mb-6">📊 Prediction Result</h3>
+              
+              {prediction ? (
+                <div className="space-y-6">
+                  {/* Main Result with Clear Explanation */}
+                  <div className={`p-6 rounded-xl ${prediction.result === 'defective' ? 'bg-destructive/10 border border-destructive/30' : 'bg-success/10 border border-success/30'}`}>
+                    <div className="text-center">
+                      <div className={`inline-flex p-4 rounded-full mb-4 ${prediction.result === 'defective' ? 'bg-destructive/20' : 'bg-success/20'}`}>
+                        {prediction.result === 'defective' ? (
+                          <AlertTriangle className="h-10 w-10 text-destructive" />
+                        ) : (
+                          <Check className="h-10 w-10 text-success" />
+                        )}
+                      </div>
+                      <h4 className="text-2xl font-display font-bold capitalize mb-2">
+                        {prediction.result === 'defective' ? '⚠️ Potential Bugs Found' : '✅ Code Looks Clean!'}
+                      </h4>
+                      <p className="text-muted-foreground text-lg">
+                        {prediction.result === 'defective' 
+                          ? `There's a ${(prediction.probability * 100).toFixed(0)}% chance this code has bugs`
+                          : `Only ${(prediction.probability * 100).toFixed(0)}% chance of having bugs`
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Risk Level with Detailed Explanation */}
+                  <div className={`p-4 rounded-xl border ${
+                    prediction.riskLevel === 'high' ? 'bg-destructive/5 border-destructive/30' :
+                    prediction.riskLevel === 'medium' ? 'bg-warning/5 border-warning/30' :
+                    'bg-success/5 border-success/30'
+                  }`}>
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl">{riskExplanations[prediction.riskLevel].emoji}</span>
+                      <div>
+                        <p className={`font-bold ${
+                          prediction.riskLevel === 'high' ? 'text-destructive' :
+                          prediction.riskLevel === 'medium' ? 'text-warning' :
+                          'text-success'
+                        }`}>
+                          {riskExplanations[prediction.riskLevel].title}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {riskExplanations[prediction.riskLevel].meaning}
+                        </p>
+                        <p className="text-sm mt-2 font-medium">
+                          👉 {riskExplanations[prediction.riskLevel].action}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Confidence Meter */}
+                  <div className="p-4 rounded-lg bg-secondary/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium">AI Confidence Level</p>
+                      <p className="text-xl font-bold text-primary">{(prediction.confidence * 100).toFixed(0)}%</p>
+                    </div>
+                    <Progress value={prediction.confidence * 100} className="h-2" />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {prediction.confidence > 0.9 ? '🎯 Very confident in this prediction!' :
+                       prediction.confidence > 0.8 ? '👍 Reasonably confident' :
+                       '🤔 Some uncertainty - consider manual review'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                  <div className="h-20 w-20 rounded-full bg-secondary/50 flex items-center justify-center mb-4">
+                    <Brain className="h-10 w-10 opacity-50" />
+                  </div>
+                  <p className="text-lg font-medium">Ready to Analyze!</p>
+                  <p className="text-sm mt-1">Enter your code metrics on the left and click "Predict Defects"</p>
+                </div>
+              )}
+            </div>
           </div>
-          {prediction && <div className="glass-card p-6"><div className="flex items-center gap-2 mb-6"><Info className="h-5 w-5 text-primary" /><h3 className="text-lg font-display font-semibold">Explainable AI - Why This Prediction?</h3></div><div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><div><h4 className="text-sm font-medium text-muted-foreground mb-4">Feature Contributions</h4><ResponsiveContainer width="100%" height={250}><BarChart data={chartData} layout="vertical"><CartesianGrid strokeDasharray="3 3" stroke="hsl(222, 30%, 18%)" /><XAxis type="number" stroke="hsl(215, 20%, 55%)" fontSize={12} /><YAxis dataKey="feature" type="category" stroke="hsl(215, 20%, 55%)" fontSize={11} width={100} /><Tooltip contentStyle={{ backgroundColor: 'hsl(222, 47%, 10%)', border: '1px solid hsl(222, 30%, 18%)', borderRadius: '8px' }} formatter={(value: number) => [`${value.toFixed(1)}%`, 'Contribution']} /><Bar dataKey="contribution" radius={[0, 4, 4, 0]}>{chartData?.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.direction === 'positive' ? 'hsl(0, 75%, 55%)' : 'hsl(150, 70%, 45%)'} />)}</Bar></BarChart></ResponsiveContainer></div><div className="space-y-3"><h4 className="text-sm font-medium text-muted-foreground mb-4">Contribution Details</h4>{prediction.featureContributions.map((fc) => <div key={fc.feature} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50"><div className="flex items-center gap-3">{fc.direction === 'positive' ? <TrendingUp className="h-4 w-4 text-destructive" /> : <TrendingDown className="h-4 w-4 text-success" />}<span className="text-sm">{fc.feature}</span></div><span className={`font-bold ${fc.direction === 'positive' ? 'text-destructive' : 'text-success'}`}>{fc.direction === 'positive' ? '+' : ''}{(fc.contribution * 100).toFixed(1)}%</span></div>)}</div></div></div>}
+
+          {/* Explainable AI Section - Enhanced */}
+          {prediction && (
+            <div className="glass-card p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-display font-semibold">🧠 Why Did We Predict This?</h3>
+              </div>
+              <p className="text-sm text-muted-foreground mb-6">
+                Here's what our AI looked at to make this prediction. Red bars = increase bug risk, Green bars = decrease bug risk.
+              </p>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Chart */}
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-4">Impact of Each Factor</h4>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={chartData} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(222, 30%, 18%)" />
+                      <XAxis type="number" stroke="hsl(215, 20%, 55%)" fontSize={12} />
+                      <YAxis dataKey="feature" type="category" stroke="hsl(215, 20%, 55%)" fontSize={11} width={110} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: 'hsl(222, 47%, 10%)', border: '1px solid hsl(222, 30%, 18%)', borderRadius: '8px' }} 
+                        formatter={(value: number, name: string, props: { payload?: { fullFeature?: string } }) => {
+                          const fullName = props.payload?.fullFeature || name;
+                          return [`${value.toFixed(1)}% impact`, fullName];
+                        }}
+                      />
+                      <Bar dataKey="contribution" radius={[0, 4, 4, 0]}>
+                        {chartData?.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.direction === 'positive' ? 'hsl(0, 75%, 55%)' : 'hsl(150, 70%, 45%)'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <div className="flex items-center justify-center gap-6 mt-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded bg-destructive"></div>
+                      <span>Increases bug risk</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded bg-success"></div>
+                      <span>Decreases bug risk</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Detailed Breakdown with Explanations */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-4">What Each Factor Means</h4>
+                  {prediction.featureContributions.map((fc) => (
+                    <div key={fc.feature} className="p-4 rounded-lg bg-secondary/50">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          {fc.direction === 'positive' ? (
+                            <TrendingUp className="h-5 w-5 text-destructive" />
+                          ) : (
+                            <TrendingDown className="h-5 w-5 text-success" />
+                          )}
+                          <span className="font-medium">{fc.feature}</span>
+                        </div>
+                        <span className={`font-bold ${fc.direction === 'positive' ? 'text-destructive' : 'text-success'}`}>
+                          {fc.direction === 'positive' ? '+' : ''}{(fc.contribution * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground pl-8">
+                        {contributionExplanations[fc.feature] || 'This metric affects code quality'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Items */}
+              <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/20">
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <Target className="h-4 w-4 text-primary" />
+                  Quick Fix Suggestions
+                </h4>
+                <ul className="space-y-2 text-sm">
+                  {prediction.featureContributions
+                    .filter(fc => fc.direction === 'positive')
+                    .slice(0, 3)
+                    .map((fc, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-primary">•</span>
+                        <span>
+                          {fc.feature === 'Cyclomatic Complexity' && 'Break down complex functions into smaller, simpler ones'}
+                          {fc.feature === 'Lines of Code' && 'Consider splitting large files into smaller modules'}
+                          {fc.feature === 'Code Churn' && 'Stabilize frequently-changed code with better architecture'}
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            </div>
+          )}
         </TabsContent>
-        <TabsContent value="batch" className="space-y-6"><div className="glass-card p-12"><div className="text-center space-y-4"><Upload className="h-12 w-12 mx-auto text-muted-foreground" /><div><p className="font-medium">Upload CSV for Batch Prediction</p><p className="text-sm text-muted-foreground mt-1">Upload a file with multiple modules for bulk analysis</p></div><Button variant="outline"><Upload className="h-4 w-4 mr-2" />Select CSV File</Button></div></div></TabsContent>
-        <TabsContent value="code" className="space-y-6"><div className="glass-card p-6"><h3 className="text-lg font-display font-semibold mb-4">Paste Source Code</h3><Textarea placeholder="Paste your Python, JavaScript, Java, or other source code here..." className="h-64 font-mono text-sm" /><div className="flex items-center justify-between mt-4"><p className="text-sm text-muted-foreground"><FileCode className="h-4 w-4 inline mr-1" />Supports Python, JavaScript, Java, C++, Go</p><Button><Brain className="h-4 w-4 mr-2" />Analyze Code</Button></div></div></TabsContent>
+
+        <TabsContent value="batch" className="space-y-6">
+          <div className="glass-card p-8">
+            <div className="text-center space-y-4 max-w-lg mx-auto">
+              <div className="h-16 w-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto">
+                <Upload className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-display font-semibold">Batch Prediction</h3>
+              <p className="text-muted-foreground">
+                Have multiple code files to analyze? Upload a CSV file and we'll predict defects for all of them at once!
+              </p>
+              <div className="border-2 border-dashed border-muted rounded-lg p-8 hover:border-primary/50 transition-colors cursor-pointer">
+                <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                <p className="font-medium">Drag & drop your CSV file here</p>
+                <p className="text-sm text-muted-foreground mt-1">or click to browse</p>
+              </div>
+              <Button size="lg" variant="outline" className="mt-4">
+                <Upload className="h-4 w-4 mr-2" />
+                Select CSV File
+              </Button>
+              <div className="text-left p-4 rounded-lg bg-muted/50 mt-4">
+                <p className="text-sm font-medium mb-2">📋 CSV Format Required:</p>
+                <code className="text-xs text-muted-foreground">
+                  filename, loc, cc, comment_density, num_functions, code_churn
+                </code>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="code" className="space-y-6">
+          <div className="glass-card p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-display font-semibold">📝 Direct Code Analysis</h3>
+                <p className="text-sm text-muted-foreground">Paste your code and we'll automatically calculate all metrics!</p>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <FileCode className="h-4 w-4" />
+                <span>Supports: Python, JavaScript, Java, C++, Go, TypeScript</span>
+              </div>
+            </div>
+            <Textarea 
+              placeholder="// Paste your code here...
+// Example:
+function calculateSum(numbers) {
+  let total = 0;
+  for (let i = 0; i < numbers.length; i++) {
+    total += numbers[i];
+  }
+  return total;
+}" 
+              className="h-72 font-mono text-sm"
+            />
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span>Lines: 0</span>
+                <span>Characters: 0</span>
+              </div>
+              <Button size="lg">
+                <Brain className="h-5 w-5 mr-2" />
+                Analyze This Code
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
