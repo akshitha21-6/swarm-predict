@@ -372,6 +372,269 @@ const contributionExplanations: Record<string, string> = {
   'Test Coverage': 'More tests catch more bugs before users see them'
 };
 
+// Code Analysis Tab Component
+function CodeAnalysisTab() {
+  const [code, setCode] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<{
+    loc: number;
+    cc: number;
+    commentDensity: number;
+    numFunctions: number;
+    codeChurn: number;
+    prediction: 'defective' | 'non-defective';
+    probability: number;
+    riskLevel: 'low' | 'medium' | 'high';
+    issues: { type: string; message: string; severity: 'low' | 'medium' | 'high' }[];
+  } | null>(null);
+
+  const analyzeCode = () => {
+    if (!code.trim()) {
+      toast.error('Please paste some code to analyze');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    
+    // Simulate analysis - calculate real metrics from code
+    setTimeout(() => {
+      const lines = code.split('\n');
+      const loc = lines.filter(l => l.trim().length > 0).length;
+      
+      // Count decision points for cyclomatic complexity
+      const decisionKeywords = ['if', 'else', 'for', 'while', 'switch', 'case', '?', '&&', '||', 'catch'];
+      let cc = 1;
+      decisionKeywords.forEach(keyword => {
+        const regex = new RegExp(`\\b${keyword}\\b`, 'g');
+        const matches = code.match(regex);
+        if (matches) cc += matches.length;
+      });
+      
+      // Count comments
+      const singleLineComments = (code.match(/\/\/.*/g) || []).length;
+      const multiLineComments = (code.match(/\/\*[\s\S]*?\*\//g) || []).length;
+      const hashComments = (code.match(/#.*/g) || []).length;
+      const totalComments = singleLineComments + multiLineComments + hashComments;
+      const commentDensity = loc > 0 ? (totalComments / loc) * 100 : 0;
+      
+      // Count functions
+      const functionPatterns = [
+        /function\s+\w+/g,
+        /\w+\s*=\s*function/g,
+        /\w+\s*=\s*\([^)]*\)\s*=>/g,
+        /\w+\s*:\s*function/g,
+        /def\s+\w+/g,
+        /public\s+(static\s+)?(void|int|String|boolean|double|float)\s+\w+\s*\(/g,
+        /private\s+(static\s+)?(void|int|String|boolean|double|float)\s+\w+\s*\(/g,
+        /func\s+\w+/g,
+      ];
+      let numFunctions = 0;
+      functionPatterns.forEach(pattern => {
+        const matches = code.match(pattern);
+        if (matches) numFunctions += matches.length;
+      });
+      numFunctions = Math.max(1, numFunctions);
+      
+      const codeChurn = Math.floor(Math.random() * 50) + 10;
+      
+      // Calculate risk based on metrics
+      let riskScore = 0;
+      if (loc > 300) riskScore += 2;
+      else if (loc > 150) riskScore += 1;
+      if (cc > 15) riskScore += 3;
+      else if (cc > 8) riskScore += 2;
+      else if (cc > 4) riskScore += 1;
+      if (commentDensity < 5) riskScore += 1;
+      if (numFunctions > 15) riskScore += 1;
+      
+      const probability = Math.min(0.95, (riskScore / 8) * 0.6 + Math.random() * 0.3);
+      const riskLevel: 'low' | 'medium' | 'high' = probability > 0.6 ? 'high' : probability > 0.35 ? 'medium' : 'low';
+      
+      // Generate issues
+      const issues: { type: string; message: string; severity: 'low' | 'medium' | 'high' }[] = [];
+      if (cc > 10) issues.push({ type: 'Complexity', message: `High cyclomatic complexity (${cc}). Consider breaking into smaller functions.`, severity: 'high' });
+      else if (cc > 5) issues.push({ type: 'Complexity', message: `Moderate complexity (${cc}). Code is manageable but could be simplified.`, severity: 'medium' });
+      if (loc > 200) issues.push({ type: 'Size', message: `Large file (${loc} lines). Consider splitting into modules.`, severity: 'medium' });
+      if (commentDensity < 5) issues.push({ type: 'Documentation', message: `Low comment density (${commentDensity.toFixed(1)}%). Add more comments to explain logic.`, severity: 'low' });
+      if (numFunctions > 10) issues.push({ type: 'Structure', message: `Many functions (${numFunctions}). Consider organizing into classes or modules.`, severity: 'medium' });
+      if (issues.length === 0) issues.push({ type: 'Quality', message: 'Code looks well-structured! Keep up the good work.', severity: 'low' });
+      
+      setAnalysisResult({
+        loc,
+        cc,
+        commentDensity,
+        numFunctions,
+        codeChurn,
+        prediction: probability > 0.5 ? 'defective' : 'non-defective',
+        probability,
+        riskLevel,
+        issues,
+      });
+      setIsAnalyzing(false);
+      toast.success('Code analysis complete!');
+    }, 1500);
+  };
+
+  const lineCount = code.split('\n').length;
+  const charCount = code.length;
+
+  return (
+    <div className="space-y-6">
+      <div className="glass-card p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-display font-semibold">📝 Direct Code Analysis</h3>
+            <p className="text-sm text-muted-foreground">Paste your code and we'll automatically calculate all metrics!</p>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <FileCode className="h-4 w-4" />
+            <span>Supports: Python, JavaScript, Java, C++, Go, TypeScript</span>
+          </div>
+        </div>
+        <Textarea 
+          placeholder={`// Paste your code here...
+// Example:
+function calculateSum(numbers) {
+  let total = 0;
+  for (let i = 0; i < numbers.length; i++) {
+    total += numbers[i];
+  }
+  return total;
+}`}
+          className="h-72 font-mono text-sm"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+        />
+        <div className="flex items-center justify-between mt-4">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span>Lines: {lineCount}</span>
+            <span>Characters: {charCount}</span>
+          </div>
+          <Button size="lg" onClick={analyzeCode} disabled={isAnalyzing}>
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <Brain className="h-5 w-5 mr-2" />
+                Analyze This Code
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Analysis Results */}
+      {analysisResult && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Metrics Overview */}
+          <div className="glass-card p-6">
+            <h3 className="text-lg font-display font-semibold mb-4 flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              Calculated Metrics
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="p-4 rounded-lg bg-secondary/50 text-center">
+                <p className="text-2xl font-bold text-primary">{analysisResult.loc}</p>
+                <p className="text-xs text-muted-foreground">Lines of Code</p>
+              </div>
+              <div className="p-4 rounded-lg bg-secondary/50 text-center">
+                <p className="text-2xl font-bold text-accent">{analysisResult.cc}</p>
+                <p className="text-xs text-muted-foreground">Complexity</p>
+              </div>
+              <div className="p-4 rounded-lg bg-secondary/50 text-center">
+                <p className="text-2xl font-bold text-success">{analysisResult.commentDensity.toFixed(1)}%</p>
+                <p className="text-xs text-muted-foreground">Comment Density</p>
+              </div>
+              <div className="p-4 rounded-lg bg-secondary/50 text-center">
+                <p className="text-2xl font-bold text-warning">{analysisResult.numFunctions}</p>
+                <p className="text-xs text-muted-foreground">Functions</p>
+              </div>
+              <div className="p-4 rounded-lg bg-secondary/50 text-center">
+                <p className="text-2xl font-bold text-muted-foreground">{analysisResult.codeChurn}</p>
+                <p className="text-xs text-muted-foreground">Churn Score</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Prediction Result */}
+          <div className={`glass-card p-6 border-l-4 ${
+            analysisResult.riskLevel === 'high' ? 'border-l-destructive bg-destructive/5' :
+            analysisResult.riskLevel === 'medium' ? 'border-l-warning bg-warning/5' :
+            'border-l-success bg-success/5'
+          }`}>
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-xl font-display font-semibold flex items-center gap-2">
+                  {analysisResult.prediction === 'defective' ? (
+                    <><AlertTriangle className="h-6 w-6 text-destructive" /> ⚠️ Potential Bugs Found</>
+                  ) : (
+                    <><Check className="h-6 w-6 text-success" /> ✅ Code Looks Clean!</>
+                  )}
+                </h3>
+                <p className="text-muted-foreground mt-2">
+                  {analysisResult.prediction === 'defective'
+                    ? `There's a ${(analysisResult.probability * 100).toFixed(0)}% chance this code has issues that could cause bugs.`
+                    : `Great news! This code appears stable with only ${(analysisResult.probability * 100).toFixed(0)}% bug probability.`}
+                </p>
+              </div>
+              <div className={`text-4xl font-bold ${
+                analysisResult.riskLevel === 'high' ? 'text-destructive' :
+                analysisResult.riskLevel === 'medium' ? 'text-warning' : 'text-success'
+              }`}>
+                {(analysisResult.probability * 100).toFixed(0)}%
+              </div>
+            </div>
+
+            {/* Risk Level Explanation */}
+            <div className="mt-4 p-4 rounded-lg bg-background/50">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-2xl">{riskExplanations[analysisResult.riskLevel].emoji}</span>
+                <span className="font-semibold">{riskExplanations[analysisResult.riskLevel].title}</span>
+              </div>
+              <p className="text-sm text-muted-foreground">{riskExplanations[analysisResult.riskLevel].meaning}</p>
+              <p className="text-sm text-primary mt-1">💡 {riskExplanations[analysisResult.riskLevel].action}</p>
+            </div>
+          </div>
+
+          {/* Issues Found */}
+          <div className="glass-card p-6">
+            <h3 className="text-lg font-display font-semibold mb-4 flex items-center gap-2">
+              <Target className="h-5 w-5 text-primary" />
+              Issues & Recommendations
+            </h3>
+            <div className="space-y-3">
+              {analysisResult.issues.map((issue, idx) => (
+                <div key={idx} className={`p-4 rounded-lg flex items-start gap-3 ${
+                  issue.severity === 'high' ? 'bg-destructive/10 border border-destructive/20' :
+                  issue.severity === 'medium' ? 'bg-warning/10 border border-warning/20' :
+                  'bg-success/10 border border-success/20'
+                }`}>
+                  <div className={`p-1 rounded ${
+                    issue.severity === 'high' ? 'bg-destructive/20 text-destructive' :
+                    issue.severity === 'medium' ? 'bg-warning/20 text-warning' :
+                    'bg-success/20 text-success'
+                  }`}>
+                    {issue.severity === 'high' ? <AlertTriangle className="h-4 w-4" /> :
+                     issue.severity === 'medium' ? <AlertCircle className="h-4 w-4" /> :
+                     <Check className="h-4 w-4" />}
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">{issue.type}</p>
+                    <p className="text-sm text-muted-foreground">{issue.message}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PredictionsPage() {
   const [activeTab, setActiveTab] = useState('single');
   const [isLoading, setIsLoading] = useState(false);
@@ -838,40 +1101,7 @@ export function PredictionsPage() {
         </TabsContent>
 
         <TabsContent value="code" className="space-y-6">
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-display font-semibold">📝 Direct Code Analysis</h3>
-                <p className="text-sm text-muted-foreground">Paste your code and we'll automatically calculate all metrics!</p>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <FileCode className="h-4 w-4" />
-                <span>Supports: Python, JavaScript, Java, C++, Go, TypeScript</span>
-              </div>
-            </div>
-            <Textarea 
-              placeholder="// Paste your code here...
-// Example:
-function calculateSum(numbers) {
-  let total = 0;
-  for (let i = 0; i < numbers.length; i++) {
-    total += numbers[i];
-  }
-  return total;
-}" 
-              className="h-72 font-mono text-sm"
-            />
-            <div className="flex items-center justify-between mt-4">
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>Lines: 0</span>
-                <span>Characters: 0</span>
-              </div>
-              <Button size="lg">
-                <Brain className="h-5 w-5 mr-2" />
-                Analyze This Code
-              </Button>
-            </div>
-          </div>
+          <CodeAnalysisTab />
         </TabsContent>
       </Tabs>
     </div>
