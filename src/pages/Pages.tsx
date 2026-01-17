@@ -396,83 +396,101 @@ function CodeAnalysisTab() {
 
     setIsAnalyzing(true);
     
-    // Simulate analysis - calculate real metrics from code
-    setTimeout(() => {
-      const lines = code.split('\n');
-      const loc = lines.filter(l => l.trim().length > 0).length;
-      
-      // Count decision points for cyclomatic complexity
-      const decisionKeywords = ['if', 'else', 'for', 'while', 'switch', 'case', '?', '&&', '||', 'catch'];
-      let cc = 1;
-      decisionKeywords.forEach(keyword => {
-        const regex = new RegExp(`\\b${keyword}\\b`, 'g');
-        const matches = code.match(regex);
-        if (matches) cc += matches.length;
-      });
-      
-      // Count comments
-      const singleLineComments = (code.match(/\/\/.*/g) || []).length;
-      const multiLineComments = (code.match(/\/\*[\s\S]*?\*\//g) || []).length;
-      const hashComments = (code.match(/#.*/g) || []).length;
-      const totalComments = singleLineComments + multiLineComments + hashComments;
-      const commentDensity = loc > 0 ? (totalComments / loc) * 100 : 0;
-      
-      // Count functions
-      const functionPatterns = [
-        /function\s+\w+/g,
-        /\w+\s*=\s*function/g,
-        /\w+\s*=\s*\([^)]*\)\s*=>/g,
-        /\w+\s*:\s*function/g,
-        /def\s+\w+/g,
-        /public\s+(static\s+)?(void|int|String|boolean|double|float)\s+\w+\s*\(/g,
-        /private\s+(static\s+)?(void|int|String|boolean|double|float)\s+\w+\s*\(/g,
-        /func\s+\w+/g,
-      ];
-      let numFunctions = 0;
-      functionPatterns.forEach(pattern => {
-        const matches = code.match(pattern);
-        if (matches) numFunctions += matches.length;
-      });
-      numFunctions = Math.max(1, numFunctions);
-      
-      const codeChurn = Math.floor(Math.random() * 50) + 10;
-      
-      // Calculate risk based on metrics
-      let riskScore = 0;
-      if (loc > 300) riskScore += 2;
-      else if (loc > 150) riskScore += 1;
-      if (cc > 15) riskScore += 3;
-      else if (cc > 8) riskScore += 2;
-      else if (cc > 4) riskScore += 1;
-      if (commentDensity < 5) riskScore += 1;
-      if (numFunctions > 15) riskScore += 1;
-      
-      const probability = Math.min(0.95, (riskScore / 8) * 0.6 + Math.random() * 0.3);
-      const riskLevel: 'low' | 'medium' | 'high' = probability > 0.6 ? 'high' : probability > 0.35 ? 'medium' : 'low';
-      
-      // Generate issues
-      const issues: { type: string; message: string; severity: 'low' | 'medium' | 'high' }[] = [];
-      if (cc > 10) issues.push({ type: 'Complexity', message: `High cyclomatic complexity (${cc}). Consider breaking into smaller functions.`, severity: 'high' });
-      else if (cc > 5) issues.push({ type: 'Complexity', message: `Moderate complexity (${cc}). Code is manageable but could be simplified.`, severity: 'medium' });
-      if (loc > 200) issues.push({ type: 'Size', message: `Large file (${loc} lines). Consider splitting into modules.`, severity: 'medium' });
-      if (commentDensity < 5) issues.push({ type: 'Documentation', message: `Low comment density (${commentDensity.toFixed(1)}%). Add more comments to explain logic.`, severity: 'low' });
-      if (numFunctions > 10) issues.push({ type: 'Structure', message: `Many functions (${numFunctions}). Consider organizing into classes or modules.`, severity: 'medium' });
-      if (issues.length === 0) issues.push({ type: 'Quality', message: 'Code looks well-structured! Keep up the good work.', severity: 'low' });
-      
-      setAnalysisResult({
-        loc,
-        cc,
-        commentDensity,
-        numFunctions,
-        codeChurn,
-        prediction: probability > 0.5 ? 'defective' : 'non-defective',
-        probability,
-        riskLevel,
-        issues,
-      });
-      setIsAnalyzing(false);
-      toast.success('Code analysis complete!');
-    }, 1500);
+    // Perform instant analysis - no artificial delay
+    const lines = code.split('\n');
+    const loc = lines.filter(l => l.trim().length > 0).length;
+    
+    // Count decision points for cyclomatic complexity
+    const decisionKeywords = ['if', 'else', 'for', 'while', 'switch', 'case', '?', '&&', '||', 'catch', 'try', 'throw'];
+    let cc = 1;
+    decisionKeywords.forEach(keyword => {
+      const regex = new RegExp(`\\b${keyword}\\b`, 'g');
+      const matches = code.match(regex);
+      if (matches) cc += matches.length;
+    });
+    
+    // Count comments
+    const singleLineComments = (code.match(/\/\/.*/g) || []).length;
+    const multiLineComments = (code.match(/\/\*[\s\S]*?\*\//g) || []).length;
+    const hashComments = (code.match(/#.*/g) || []).length;
+    const totalComments = singleLineComments + multiLineComments + hashComments;
+    const commentDensity = loc > 0 ? (totalComments / loc) * 100 : 0;
+    
+    // Count functions (expanded patterns)
+    const functionPatterns = [
+      /function\s+\w+/g,
+      /\w+\s*=\s*function/g,
+      /\w+\s*=\s*\([^)]*\)\s*=>/g,
+      /const\s+\w+\s*=\s*\(/g,
+      /\w+\s*:\s*function/g,
+      /def\s+\w+/g,
+      /public\s+(static\s+)?(void|int|String|boolean|double|float)\s+\w+\s*\(/g,
+      /private\s+(static\s+)?(void|int|String|boolean|double|float)\s+\w+\s*\(/g,
+      /protected\s+(static\s+)?(void|int|String|boolean|double|float)\s+\w+\s*\(/g,
+      /func\s+\w+/g,
+      /async\s+function/g,
+      /export\s+(default\s+)?function/g,
+    ];
+    let numFunctions = 0;
+    functionPatterns.forEach(pattern => {
+      const matches = code.match(pattern);
+      if (matches) numFunctions += matches.length;
+    });
+    numFunctions = Math.max(1, numFunctions);
+    
+    // Calculate code churn based on code patterns
+    const codeChurn = Math.min(100, Math.floor(loc * 0.15) + Math.floor(cc * 2));
+    
+    // Calculate risk based on metrics
+    let riskScore = 0;
+    if (loc > 300) riskScore += 2;
+    else if (loc > 150) riskScore += 1;
+    if (cc > 15) riskScore += 3;
+    else if (cc > 8) riskScore += 2;
+    else if (cc > 4) riskScore += 1;
+    if (commentDensity < 5) riskScore += 1;
+    if (numFunctions > 15) riskScore += 1;
+    
+    // Deterministic probability based on metrics (removed random factor)
+    const probability = Math.min(0.95, Math.max(0.05, (riskScore / 8) * 0.7 + (cc / 30) * 0.2 + (loc / 500) * 0.1));
+    const riskLevel: 'low' | 'medium' | 'high' = probability > 0.6 ? 'high' : probability > 0.35 ? 'medium' : 'low';
+    
+    // Generate issues
+    const issues: { type: string; message: string; severity: 'low' | 'medium' | 'high' }[] = [];
+    if (cc > 10) issues.push({ type: 'Complexity', message: `High cyclomatic complexity (${cc}). Consider breaking into smaller functions.`, severity: 'high' });
+    else if (cc > 5) issues.push({ type: 'Complexity', message: `Moderate complexity (${cc}). Code is manageable but could be simplified.`, severity: 'medium' });
+    if (loc > 200) issues.push({ type: 'Size', message: `Large file (${loc} lines). Consider splitting into modules.`, severity: 'medium' });
+    if (commentDensity < 5) issues.push({ type: 'Documentation', message: `Low comment density (${commentDensity.toFixed(1)}%). Add more comments to explain logic.`, severity: 'low' });
+    if (numFunctions > 10) issues.push({ type: 'Structure', message: `Many functions (${numFunctions}). Consider organizing into classes or modules.`, severity: 'medium' });
+    
+    // Check for nested loops (performance issue)
+    const nestedLoops = (code.match(/for\s*\([^)]+\)[^{]*\{[^}]*for\s*\(/g) || []).length + 
+                        (code.match(/while\s*\([^)]+\)[^{]*\{[^}]*while\s*\(/g) || []).length;
+    if (nestedLoops > 0) issues.push({ type: 'Performance', message: `Found ${nestedLoops} nested loops. Consider optimizing for better performance.`, severity: 'high' });
+    
+    // Check for TODO/FIXME comments
+    const todoCount = (code.match(/TODO|FIXME|HACK|XXX/gi) || []).length;
+    if (todoCount > 0) issues.push({ type: 'Technical Debt', message: `Found ${todoCount} TODO/FIXME markers. Consider addressing these items.`, severity: 'medium' });
+    
+    // Check for console.log (debugging leftover)
+    const consoleCount = (code.match(/console\.(log|warn|error)/g) || []).length;
+    if (consoleCount > 2) issues.push({ type: 'Debug Code', message: `Found ${consoleCount} console statements. Remove before production.`, severity: 'low' });
+    
+    if (issues.length === 0) issues.push({ type: 'Quality', message: 'Code looks well-structured! Keep up the good work.', severity: 'low' });
+    
+    setAnalysisResult({
+      loc,
+      cc,
+      commentDensity,
+      numFunctions,
+      codeChurn,
+      prediction: probability > 0.5 ? 'defective' : 'non-defective',
+      probability,
+      riskLevel,
+      issues,
+    });
+    setIsAnalyzing(false);
+    toast.success('Code analysis complete!');
   };
 
   const lineCount = code.split('\n').length;
