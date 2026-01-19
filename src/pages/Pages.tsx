@@ -640,43 +640,132 @@ function calculateSum(numbers) {
             </div>
           </div>
 
-          {/* Prediction Result */}
-          <div className={`glass-card p-6 border-l-4 ${
-            analysisResult.riskLevel === 'high' ? 'border-l-destructive bg-destructive/5' :
-            analysisResult.riskLevel === 'medium' ? 'border-l-warning bg-warning/5' :
-            'border-l-success bg-success/5'
+          {/* Prediction Result with Visual Gauge */}
+          <div className={`glass-card p-6 border-2 ${
+            analysisResult.riskLevel === 'high' ? 'border-destructive/50 bg-destructive/5' :
+            analysisResult.riskLevel === 'medium' ? 'border-warning/50 bg-warning/5' :
+            'border-success/50 bg-success/5'
           }`}>
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-xl font-display font-semibold flex items-center gap-2">
-                  {analysisResult.prediction === 'defective' ? (
-                    <><AlertTriangle className="h-6 w-6 text-destructive" /> ⚠️ Potential Bugs Found</>
-                  ) : (
-                    <><Check className="h-6 w-6 text-success" /> ✅ Code Looks Clean!</>
-                  )}
-                </h3>
-                <p className="text-muted-foreground mt-2">
-                  {analysisResult.prediction === 'defective'
-                    ? `There's a ${(analysisResult.probability * 100).toFixed(0)}% chance this code has issues that could cause bugs.`
-                    : `Great news! This code appears stable with only ${(analysisResult.probability * 100).toFixed(0)}% bug probability.`}
-                </p>
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              {/* Circular Risk Gauge */}
+              <div className="relative flex-shrink-0">
+                <svg className="w-40 h-40 transform -rotate-90" viewBox="0 0 100 100">
+                  {/* Background circle */}
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="42"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    className="text-secondary"
+                  />
+                  {/* Progress circle */}
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="42"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={`${analysisResult.probability * 264} 264`}
+                    className={
+                      analysisResult.riskLevel === 'high' ? 'text-destructive' :
+                      analysisResult.riskLevel === 'medium' ? 'text-warning' : 'text-success'
+                    }
+                  />
+                </svg>
+                {/* Center percentage */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className={`text-4xl font-bold ${
+                    analysisResult.riskLevel === 'high' ? 'text-destructive' :
+                    analysisResult.riskLevel === 'medium' ? 'text-warning' : 'text-success'
+                  }`}>
+                    {(analysisResult.probability * 100).toFixed(0)}%
+                  </span>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">Risk</span>
+                </div>
               </div>
-              <div className={`text-4xl font-bold ${
-                analysisResult.riskLevel === 'high' ? 'text-destructive' :
-                analysisResult.riskLevel === 'medium' ? 'text-warning' : 'text-success'
-              }`}>
-                {(analysisResult.probability * 100).toFixed(0)}%
+
+              {/* Prediction Details */}
+              <div className="flex-1 text-center md:text-left">
+                <div className="flex items-center justify-center md:justify-start gap-3 mb-3">
+                  <div className={`p-3 rounded-xl ${
+                    analysisResult.riskLevel === 'high' ? 'bg-destructive/20' :
+                    analysisResult.riskLevel === 'medium' ? 'bg-warning/20' : 'bg-success/20'
+                  }`}>
+                    {analysisResult.prediction === 'defective' ? (
+                      <AlertTriangle className={`h-8 w-8 ${
+                        analysisResult.riskLevel === 'high' ? 'text-destructive' : 'text-warning'
+                      }`} />
+                    ) : (
+                      <Check className="h-8 w-8 text-success" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-display font-bold">
+                      {analysisResult.prediction === 'defective' ? 'Potential Issues Detected' : 'Code Looks Clean!'}
+                    </h3>
+                    <p className={`text-sm font-medium ${
+                      analysisResult.riskLevel === 'high' ? 'text-destructive' :
+                      analysisResult.riskLevel === 'medium' ? 'text-warning' : 'text-success'
+                    }`}>
+                      {analysisResult.riskLevel.toUpperCase()} RISK LEVEL
+                    </p>
+                  </div>
+                </div>
+                <p className="text-muted-foreground">
+                  {analysisResult.prediction === 'defective'
+                    ? `Analysis indicates a ${(analysisResult.probability * 100).toFixed(0)}% probability of defects. Review recommended.`
+                    : `Great work! Only ${(analysisResult.probability * 100).toFixed(0)}% defect probability detected.`}
+                </p>
               </div>
             </div>
 
-            {/* Risk Level Explanation */}
-            <div className="mt-4 p-4 rounded-lg bg-background/50">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-2xl">{riskExplanations[analysisResult.riskLevel].emoji}</span>
-                <span className="font-semibold">{riskExplanations[analysisResult.riskLevel].title}</span>
+            {/* Risk Progress Bar */}
+            <div className="mt-6">
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="text-muted-foreground">Risk Level</span>
+                <span className={`font-medium ${
+                  analysisResult.riskLevel === 'high' ? 'text-destructive' :
+                  analysisResult.riskLevel === 'medium' ? 'text-warning' : 'text-success'
+                }`}>
+                  {(analysisResult.probability * 100).toFixed(1)}%
+                </span>
               </div>
-              <p className="text-sm text-muted-foreground">{riskExplanations[analysisResult.riskLevel].meaning}</p>
-              <p className="text-sm text-primary mt-1">💡 {riskExplanations[analysisResult.riskLevel].action}</p>
+              <div className="h-3 bg-secondary rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    analysisResult.riskLevel === 'high' ? 'bg-gradient-to-r from-warning to-destructive' :
+                    analysisResult.riskLevel === 'medium' ? 'bg-gradient-to-r from-success to-warning' :
+                    'bg-gradient-to-r from-success/50 to-success'
+                  }`}
+                  style={{ width: `${analysisResult.probability * 100}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                <span>0% (Safe)</span>
+                <span>50%</span>
+                <span>100% (Critical)</span>
+              </div>
+            </div>
+
+            {/* Risk Level Explanation Card */}
+            <div className={`mt-6 p-4 rounded-xl ${
+              analysisResult.riskLevel === 'high' ? 'bg-destructive/10 border border-destructive/20' :
+              analysisResult.riskLevel === 'medium' ? 'bg-warning/10 border border-warning/20' :
+              'bg-success/10 border border-success/20'
+            }`}>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-3xl">{riskExplanations[analysisResult.riskLevel].emoji}</span>
+                <span className="text-lg font-semibold">{riskExplanations[analysisResult.riskLevel].title}</span>
+              </div>
+              <p className="text-sm text-muted-foreground mb-2">{riskExplanations[analysisResult.riskLevel].meaning}</p>
+              <div className="flex items-center gap-2 text-sm">
+                <Zap className="h-4 w-4 text-primary" />
+                <span className="text-primary font-medium">{riskExplanations[analysisResult.riskLevel].action}</span>
+              </div>
             </div>
           </div>
 
