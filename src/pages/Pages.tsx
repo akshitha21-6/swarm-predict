@@ -85,10 +85,10 @@ export function Dashboard() {
         <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-success/10 text-success"><Activity className="h-4 w-4" /><span className="text-sm font-medium">System Online</span></div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Datasets Analyzed" value="24" change="+3 this week" changeType="positive" icon={Database} />
-        <StatCard title="Model Accuracy" value="97.2%" change="+2.4% from baseline" changeType="positive" icon={TrendingUp} iconColor="text-success" />
-        <StatCard title="Defects Detected" value="1,847" change="152 high-risk" changeType="negative" icon={AlertTriangle} iconColor="text-warning" />
-        <StatCard title="Modules Scanned" value="12,453" change="98.7% coverage" changeType="positive" icon={Shield} iconColor="text-accent" />
+        <StatCard title="Datasets Analyzed" value="24" change="Total training datasets used" changeType="positive" icon={Database} />
+        <StatCard title="Model Accuracy" value="97.2%" change="After swarm optimization" changeType="positive" icon={TrendingUp} iconColor="text-success" />
+        <StatCard title="Defects Detected" value="1,847" change="Across all analyzed modules" changeType="negative" icon={AlertTriangle} iconColor="text-warning" />
+        <StatCard title="Modules Scanned" value="12,453" change="Code modules analyzed" changeType="positive" icon={Shield} iconColor="text-accent" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="chart-container"><div className="flex items-center justify-between mb-6"><div><h3 className="text-lg font-display font-semibold">Model Accuracy Over Time</h3><p className="text-sm text-muted-foreground">Baseline vs Swarm-Optimized</p></div></div>
