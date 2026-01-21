@@ -85,7 +85,7 @@ export function Dashboard() {
         <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-success/10 text-success"><Activity className="h-4 w-4" /><span className="text-sm font-medium">System Online</span></div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Datasets Analyzed" value="24" change="NASA & PROMISE benchmark datasets" changeType="positive" icon={Database} />
+        <StatCard title="Datasets Analyzed" value="3" change="NASA & PROMISE benchmark datasets" changeType="positive" icon={Database} />
         <StatCard title="Model Accuracy" value="97.2%" change="After swarm optimization" changeType="positive" icon={TrendingUp} iconColor="text-success" />
         <StatCard title="Defects Detected" value="1,847" change="From benchmark dataset analysis" changeType="negative" icon={AlertTriangle} iconColor="text-warning" />
         <StatCard title="Modules Scanned" value="12,453" change="Software modules in datasets" changeType="positive" icon={Shield} iconColor="text-accent" />
