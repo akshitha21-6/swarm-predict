@@ -67,21 +67,6 @@ interface PlatformUXIssue {
 }
 
 // ==================== CONSTANTS ====================
-const mockDatasets: UploadedDataset[] = [
-  { id: '1', name: 'NASA_KC1.csv', size: '2.4 MB', rows: 2109, columns: 22, status: 'ready', uploadedAt: new Date('2024-01-15') },
-  { id: '2', name: 'PROMISE_CM1.csv', size: '1.8 MB', rows: 498, columns: 21, status: 'ready', uploadedAt: new Date('2024-01-14') },
-  { id: '3', name: 'Eclipse_Bug_Dataset.csv', size: '5.2 MB', rows: 4702, columns: 28, status: 'ready', uploadedAt: new Date('2024-01-12') }
-];
-
-const mockPreviewData = [
-  { loc: 156, cc: 12, comment_density: 0.23, num_functions: 8, code_churn: 45, defective: 1 },
-  { loc: 89, cc: 5, comment_density: 0.45, num_functions: 3, code_churn: 12, defective: 0 },
-  { loc: 234, cc: 18, comment_density: 0.12, num_functions: 15, code_churn: 78, defective: 1 },
-  { loc: 67, cc: 3, comment_density: 0.56, num_functions: 2, code_churn: 5, defective: 0 },
-  { loc: 312, cc: 25, comment_density: 0.08, num_functions: 22, code_churn: 134, defective: 1 }
-];
-
-const confusionMatrix = { tp: 847, fp: 53, fn: 89, tn: 1011 };
 
 const algorithms = [
   { 
@@ -212,7 +197,7 @@ export function MainAnalysisPage() {
   });
 
   // Dataset states
-  const [datasets, setDatasets] = useState<UploadedDataset[]>(mockDatasets);
+  const [datasets, setDatasets] = useState<UploadedDataset[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -487,12 +472,8 @@ Please analyze this social media content for:
     return 'text-destructive';
   };
 
-  // Confusion matrix calculations
-  const total = confusionMatrix.tp + confusionMatrix.fp + confusionMatrix.fn + confusionMatrix.tn;
-  const accuracy = (confusionMatrix.tp + confusionMatrix.tn) / total;
-  const precision = confusionMatrix.tp / (confusionMatrix.tp + confusionMatrix.fp);
-  const recall = confusionMatrix.tp / (confusionMatrix.tp + confusionMatrix.fn);
-  const f1 = (2 * precision * recall) / (precision + recall);
+  // Placeholder values - metrics will be populated when models are trained
+  const hasTrainedModels = false;
 
   // Section header component
   const SectionHeader = ({ title, subtitle, section, icon: Icon }: { title: string; subtitle: string; section: keyof typeof expandedSections; icon: React.ElementType }) => (
@@ -554,20 +535,24 @@ Please analyze this social media content for:
             {/* Overall Accuracy Display */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="glass-card p-5 text-center">
-                <p className="text-4xl font-bold text-primary">97.2%</p>
+                <p className="text-4xl font-bold text-muted-foreground">—</p>
                 <p className="text-sm text-muted-foreground mt-1">Overall Accuracy</p>
+                <p className="text-xs text-muted-foreground">Train models to see</p>
               </div>
               <div className="glass-card p-5 text-center">
-                <p className="text-4xl font-bold text-accent">12,453</p>
+                <p className="text-4xl font-bold text-muted-foreground">0</p>
                 <p className="text-sm text-muted-foreground mt-1">Modules Analyzed</p>
+                <p className="text-xs text-muted-foreground">Upload datasets</p>
               </div>
               <div className="glass-card p-5 text-center">
-                <p className="text-4xl font-bold text-warning">1,847</p>
+                <p className="text-4xl font-bold text-muted-foreground">0</p>
                 <p className="text-sm text-muted-foreground mt-1">Defects Found</p>
+                <p className="text-xs text-muted-foreground">Run analysis</p>
               </div>
               <div className="glass-card p-5 text-center">
-                <p className="text-4xl font-bold text-success">98.7%</p>
+                <p className="text-4xl font-bold text-muted-foreground">—</p>
                 <p className="text-sm text-muted-foreground mt-1">Coverage Rate</p>
+                <p className="text-xs text-muted-foreground">Train models to see</p>
               </div>
             </div>
 
@@ -709,31 +694,11 @@ Please analyze this social media content for:
               <div className="glass-card p-5">
                 <h3 className="font-semibold mb-4">Dataset Preview</h3>
                 {selectedDataset ? (
-                  <div className="overflow-x-auto custom-scrollbar">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border">
-                          <th className="text-left py-2 px-3 font-medium text-muted-foreground">LOC</th>
-                          <th className="text-left py-2 px-3 font-medium text-muted-foreground">CC</th>
-                          <th className="text-left py-2 px-3 font-medium text-muted-foreground">Comments</th>
-                          <th className="text-left py-2 px-3 font-medium text-muted-foreground">Defective</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {mockPreviewData.slice(0, 4).map((row, index) => (
-                          <tr key={index} className="border-b border-border/50">
-                            <td className="py-2 px-3">{row.loc}</td>
-                            <td className="py-2 px-3">{row.cc}</td>
-                            <td className="py-2 px-3">{row.comment_density.toFixed(2)}</td>
-                            <td className="py-2 px-3">
-                              <span className={`metric-badge ${row.defective ? 'danger' : 'success'} text-xs`}>
-                                {row.defective ? 'Yes' : 'No'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                    <FileSpreadsheet className="h-10 w-10 mb-3 opacity-50" />
+                    <p className="font-medium text-sm">{selectedDataset.name}</p>
+                    <p className="text-xs mt-1">{selectedDataset.rows.toLocaleString()} rows • {selectedDataset.columns} columns</p>
+                    <p className="text-xs mt-2">Preview available after processing</p>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
@@ -1075,19 +1040,19 @@ Please analyze this social media content for:
             {/* Metrics Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="glass-card p-4 text-center">
-                <p className="text-3xl font-bold text-primary">{(accuracy * 100).toFixed(1)}%</p>
+                <p className="text-3xl font-bold text-muted-foreground">—</p>
                 <p className="text-sm text-muted-foreground mt-1">Accuracy</p>
               </div>
               <div className="glass-card p-4 text-center">
-                <p className="text-3xl font-bold text-accent">{(precision * 100).toFixed(1)}%</p>
+                <p className="text-3xl font-bold text-muted-foreground">—</p>
                 <p className="text-sm text-muted-foreground mt-1">Precision</p>
               </div>
               <div className="glass-card p-4 text-center">
-                <p className="text-3xl font-bold text-warning">{(recall * 100).toFixed(1)}%</p>
+                <p className="text-3xl font-bold text-muted-foreground">—</p>
                 <p className="text-sm text-muted-foreground mt-1">Recall</p>
               </div>
               <div className="glass-card p-4 text-center">
-                <p className="text-3xl font-bold text-success">{(f1 * 100).toFixed(1)}%</p>
+                <p className="text-3xl font-bold text-muted-foreground">—</p>
                 <p className="text-sm text-muted-foreground mt-1">F1-Score</p>
               </div>
             </div>
@@ -1097,20 +1062,20 @@ Please analyze this social media content for:
               <div className="glass-card p-6">
                 <h3 className="font-semibold mb-4 text-center">Confusion Matrix</h3>
                 <div className="grid grid-cols-2 gap-3 max-w-sm mx-auto">
-                  <div className="p-6 rounded-xl bg-success/20 text-center border border-success/30">
-                    <p className="text-3xl font-bold text-success">{confusionMatrix.tp}</p>
+                  <div className="p-6 rounded-xl bg-secondary/50 text-center border border-border">
+                    <p className="text-3xl font-bold text-muted-foreground">—</p>
                     <p className="text-xs text-muted-foreground mt-1">True Positive</p>
                   </div>
-                  <div className="p-6 rounded-xl bg-destructive/20 text-center border border-destructive/30">
-                    <p className="text-3xl font-bold text-destructive">{confusionMatrix.fp}</p>
+                  <div className="p-6 rounded-xl bg-secondary/50 text-center border border-border">
+                    <p className="text-3xl font-bold text-muted-foreground">—</p>
                     <p className="text-xs text-muted-foreground mt-1">False Positive</p>
                   </div>
-                  <div className="p-6 rounded-xl bg-warning/20 text-center border border-warning/30">
-                    <p className="text-3xl font-bold text-warning">{confusionMatrix.fn}</p>
+                  <div className="p-6 rounded-xl bg-secondary/50 text-center border border-border">
+                    <p className="text-3xl font-bold text-muted-foreground">—</p>
                     <p className="text-xs text-muted-foreground mt-1">False Negative</p>
                   </div>
-                  <div className="p-6 rounded-xl bg-primary/20 text-center border border-primary/30">
-                    <p className="text-3xl font-bold text-primary">{confusionMatrix.tn}</p>
+                  <div className="p-6 rounded-xl bg-secondary/50 text-center border border-border">
+                    <p className="text-3xl font-bold text-muted-foreground">—</p>
                     <p className="text-xs text-muted-foreground mt-1">True Negative</p>
                   </div>
                 </div>
@@ -1118,27 +1083,10 @@ Please analyze this social media content for:
 
               <div className="glass-card p-6">
                 <h3 className="font-semibold mb-4">What This Means</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                    <span className="text-sm">Correctly identified defects</span>
-                    <span className="font-bold text-success">{confusionMatrix.tp}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                    <span className="text-sm">Correctly identified non-defects</span>
-                    <span className="font-bold text-primary">{confusionMatrix.tn}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                    <span className="text-sm">False alarms (said defect, but wasn't)</span>
-                    <span className="font-bold text-destructive">{confusionMatrix.fp}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                    <span className="text-sm">Missed defects (said OK, but had bugs)</span>
-                    <span className="font-bold text-warning">{confusionMatrix.fn}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/30">
-                    <span className="font-medium">Total Predictions</span>
-                    <span className="font-bold">{total}</span>
-                  </div>
+                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                  <Target className="h-10 w-10 mb-3 opacity-50" />
+                  <p className="font-medium">No model metrics available</p>
+                  <p className="text-sm mt-1 text-center">Train models on uploaded datasets to see confusion matrix results</p>
                 </div>
               </div>
             </div>
